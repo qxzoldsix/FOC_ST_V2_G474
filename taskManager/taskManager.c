@@ -4,27 +4,40 @@
 TaskTime  TasksPare[Task_Num];
 
 
+/**
+ * Vofa JustFloat 数据上报 (1ms / ~1kHz)
+ *
+ * CH1: PLL_Err        — PLL 角度误差, 正常 ≈ 0
+ * CH2: FluxR_mag      — 转子磁链幅值, 正常 ≈ MOTOR_FLUX
+ * CH3: speed_hz / Hz  — 观测器估算电频率 (无感) 或 VF CurrentHz
+ * CH4: Id (Ds)        — d 轴电流反馈, Id=0 控制时 ≈ 0
+ * CH5: Iq (Qs)        — q 轴电流反馈 (转矩电流)
+ * CH6: BUS_Voltage    — 母线电压
+ */
 void HFPeriod_RUN(void)
 {
     static uint8_t buf[28];
     float *p = (float *)buf;
 
-    p[0] = motor.OpenTheta;
-    p[1] = motor.IQAngle;
-    p[2] = Volt_CurrPara.BUS_Voltage;
-    p[3] = Volt_CurrPara.PhaseU_Curr;
-    p[4] = Volt_CurrPara.PhaseV_Curr;
-    p[5] = Volt_CurrPara.PhaseW_Curr;
+    float fluxr_mag = sqrtf(FluxR_in_wb[0] * FluxR_in_wb[0] +
+                            FluxR_in_wb[1] * FluxR_in_wb[1]);
 
-    // JustFloat 帧尾
+    p[0] = Foc_observer.PLL_Err;
+    p[1] = fluxr_mag;
+    p[2] = (motor.Control_Mode == 2 || motor.Control_Mode == 4)
+               ? Foc_observer.speed_hz
+               : motor.CurrentHz;
+    p[3] = PARK_PCurr.Ds;
+    p[4] = PARK_PCurr.Qs;
+    p[5] = Volt_CurrPara.BUS_Voltage;
+
+    // JustFloat frame tail
     buf[24] = 0x00;
     buf[25] = 0x00;
     buf[26] = 0x80;
     buf[27] = 0x7F;
 
     CDC_Transmit_FS(buf, sizeof(buf));
-
-
 }
 
 
@@ -140,22 +153,31 @@ void Task_DEBUG(void)
         default: LCD_ShowString(50, 45, (uint8_t *)"[ ?? ]      ", WHITE, BLACK, 12, 0); break;
     }
 
-    // ============ 数据行：VF 关键参数 ============
-    // y=60: 斜坡频率 CurrentHz（原 Iq 位）
+    // ============ 数据行 ============
+    // y=60: 当前频率 / 估算频率
     LCD_ShowString(5, 60, (uint8_t *)"FHz", WHITE, BLACK, 12, 0);
     LCD_ShowFloatNum1(45, 60, motor.CurrentHz, 5, 1, GREEN, BLACK, 12);
 
-    // y=78: 目标电压（原 Vel 位）
-    LCD_ShowString(5, 78, (uint8_t *)"Vtr", WHITE, BLACK, 12, 0);
-    LCD_ShowFloatNum1(45, 78, motor.TargetVolt, 5, 2, YELLOW, BLACK, 12);
+    // y=78: PLL 误差 / 磁链幅值
+    LCD_ShowString(5, 78, (uint8_t *)"PLL", WHITE, BLACK, 12, 0);
+    LCD_ShowFloatNum1(45, 78, Foc_observer.PLL_Err, 5, 3, YELLOW, BLACK, 12);
 
-    // y=96: 电角度 OpenTheta（原 Pos 位）
-    LCD_ShowString(5, 96, (uint8_t *)"Ang", WHITE, BLACK, 12, 0);
-    LCD_ShowFloatNum1(45, 96, motor.OpenTheta, 5, 2, BRRED, BLACK, 12);
+    // y=96: 估算速度 (Sensorless) 或 VF 角度 (VF)
+    if (motor.Control_Mode == 2 || motor.Control_Mode == 4) {
+        LCD_ShowString(5, 96, (uint8_t *)"Est", WHITE, BLACK, 12, 0);
+        LCD_ShowFloatNum1(45, 96, Foc_observer.speed_hz, 5, 1, BRRED, BLACK, 12);
+    } else {
+        LCD_ShowString(5, 96, (uint8_t *)"Ang", WHITE, BLACK, 12, 0);
+        LCD_ShowFloatNum1(45, 96, motor.OpenTheta, 5, 2, BRRED, BLACK, 12);
+    }
 
-    // y=114: 故障码（原 Tor 位）
-    LCD_ShowString(5, 114, (uint8_t *)"Flt", WHITE, BLACK, 12, 0);
-    LCD_ShowIntNum(45, 114, motor.Fault_DTC, 3, RED, BLACK, 12);
+    // y=114: 磁链幅值 |ψr| / 故障码
+    {
+        float fluxr_mag = sqrtf(FluxR_in_wb[0] * FluxR_in_wb[0] +
+                                FluxR_in_wb[1] * FluxR_in_wb[1]);
+        LCD_ShowString(5, 114, (uint8_t *)"Psi", WHITE, BLACK, 12, 0);
+        LCD_ShowFloatNum1(45, 114, fluxr_mag, 5, 4, MAGENTA, BLACK, 12);
+    }
 }
 
 

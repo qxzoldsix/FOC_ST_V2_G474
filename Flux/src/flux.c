@@ -27,10 +27,15 @@ void Flux_Observer_Init(void)
     Foc_observer.PLL_Ui = 0.0f;
 
     Foc_observer.Ctrl_ts = 5e-5f;       // 控制周期 20kHz (Ts = 1/20000 = 50µs)
-    Foc_observer.Gain = 15000.0f;       // 磁链幅值补偿增益 (150000→1500, 避免幅值环震荡啸叫)
+    Foc_observer.Gain = 5000.0f;        // 磁链幅值补偿增益（过大→震荡啸叫，过小→收敛慢）
     Foc_observer.Err = 0.0f;
     Foc_observer.Theta = 0.0f;
     Foc_observer.speed_hz = 0.0f;
+
+    /* PLL 增益恢复机制 */
+    Foc_observer.PLL_kp_target = Foc_observer.PLL_kp;
+    Foc_observer.PLL_ki_target = Foc_observer.PLL_ki;
+    Foc_observer.pll_ramp_active = 0;
 
     /* 磁链积分初值清零 */
     Flux_in_wb[0] = 0.0f;
@@ -49,15 +54,53 @@ void Flux_Observer_Init(void)
 }
 
 /**
+ * 死区电压补偿（αβ 坐标系）
+ *
+ * 逆变器死区导致实际输出电压 ≠ 命令电压。低频时此误差占比极大，
+ * 观测器若用未补偿的电压积分，磁链估算会严重偏离。
+ *
+ * 公式: V_dead = (T_dead / T_pwm) * V_bus * sign(I_phase)
+ *       Vα_dist = (2/3) * V_dead * [sign(Ia) - 0.5*sign(Ib) - 0.5*sign(Ic)]
+ *       Vβ_dist = (1/√3) * V_dead * [sign(Ib) - sign(Ic)]
+ */
+static void Deadtime_Comp_ab(float *Ualpha_out, float *Ubeta_out)
+{
+    float sign_u, sign_v, sign_w;
+    float v_dead, v_alpha_dist, v_beta_dist;
+
+    /* 死区等效电压: 24V * 0.02 ≈ 0.48V（可根据实测调整） */
+    #define V_DEADTIME  0.3f
+
+    /* 电流极性 */
+    sign_u = (Volt_CurrPara.PhaseU_Curr > 0.01f) ? 1.0f :
+             ((Volt_CurrPara.PhaseU_Curr < -0.01f) ? -1.0f : 0.0f);
+    sign_v = (Volt_CurrPara.PhaseV_Curr > 0.01f) ? 1.0f :
+             ((Volt_CurrPara.PhaseV_Curr < -0.01f) ? -1.0f : 0.0f);
+    sign_w = (Volt_CurrPara.PhaseW_Curr > 0.01f) ? 1.0f :
+             ((Volt_CurrPara.PhaseW_Curr < -0.01f) ? -1.0f : 0.0f);
+
+    v_dead = V_DEADTIME;
+
+    /* Clarke 变换：相电压畸变 → αβ */
+    v_alpha_dist = 0.6666667f * v_dead * (sign_u - 0.5f * sign_v - 0.5f * sign_w);
+    v_beta_dist  = 0.5773503f * v_dead * (sign_v - sign_w);  // 1/√3
+
+    /* 补偿：命令电压 + 畸变电压 = 真实电压 */
+    *Ualpha_out = Svpwm_dq.Ualpha + v_alpha_dist;
+    *Ubeta_out  = Svpwm_dq.Ubeta  + v_beta_dist;
+}
+
+/**
  * 磁链观测器执行（每个 PWM 周期调用一次）
  *
- * 算法链路：
- *   1. 反电动势积分 → 总磁链 ψ = ∫(Uαβ - Rs·Iαβ + 补偿项) dt
- *   2. 定子磁链 ψs = Ls × Iαβ
- *   3. 转子磁链 ψr = ψ - ψs
- *   4. 磁链幅值误差补偿（收敛 ψr 幅值到参考值）
- *   5. PLL 锁相环跟踪转子磁链角度
- *   6. 电频率计算与低通滤波
+ * 算法链路（修正版）：
+ *   1. 死区补偿 → 修正输入电压
+ *   2. 先算转子磁链 ψr = ψ - Ls·I（用当前周期的 I，当前积累的 ψ）
+ *   3. 再算磁链幅值误差 Err（与步骤 2 同周期，消除一周期延迟）
+ *   4. PLL 锁相环跟踪 ψr 角度（带积分抗饱和）
+ *   5. 用 Err 补偿更新总磁链 ψ（用于下一周期）
+ *   6. 电频率计算
+ *   7. PLL 增益恢复 ramp（如果被切换逻辑降低了）
  */
 void Observer_Run(void)
 {
@@ -65,66 +108,91 @@ void Observer_Run(void)
     float VoltdPhi[2];     // 磁链微分 dψ/dt
     float sin_theta, cos_theta;
     float g_fluxfluxR;
+    float Ualpha_cmd, Ubeta_cmd;  // 死区补偿后的电压
+    float pll_ui_lim;             // PLL 积分抗饱和限幅
 
-    /* ---- 第一步：α 轴磁链积分 ---- */
-    VoltRs[0] = Foc_observer.Rs * CLARKE_PCurr.Alpha;
-    VoltdPhi[0] = Svpwm_dq.Ualpha - VoltRs[0];
-    VoltdPhi[0] += FluxR_in_wb[0] * Foc_observer.Err * Foc_observer.Gain;  // 幅值误差补偿
-    Flux_in_wb[0] += VoltdPhi[0] * Foc_observer.Ctrl_ts;                   // 前向欧拉积分
+    /* ---- 死区补偿：修正命令电压 → 逼近真实电压 ---- */
+    Deadtime_Comp_ab(&Ualpha_cmd, &Ubeta_cmd);
 
-    /* ---- 第二步：β 轴磁链积分 ---- */
-    VoltRs[1] = Foc_observer.Rs * CLARKE_PCurr.Beta;
-    VoltdPhi[1] = Svpwm_dq.Ubeta - VoltRs[1];
-    VoltdPhi[1] += FluxR_in_wb[1] * Foc_observer.Err * Foc_observer.Gain;
-    Flux_in_wb[1] += VoltdPhi[1] * Foc_observer.Ctrl_ts;
+    /* ================================================================
+     * Step 1: 先算转子磁链（用当前 I，当前累积的总磁链 ψ）
+     *         这一步提前，让 Err 和补偿在同一周期内
+     * ================================================================ */
+    FluxR_in_wb[0] = Flux_in_wb[0] - Foc_observer.Ls * CLARKE_PCurr.Alpha;
+    FluxR_in_wb[1] = Flux_in_wb[1] - Foc_observer.Ls * CLARKE_PCurr.Beta;
 
-    /* ---- 第三步：定子磁链 ψs = Ls × I ---- */
-    FluxS_in_wb[0] = Foc_observer.Ls * CLARKE_PCurr.Alpha;
-    FluxS_in_wb[1] = Foc_observer.Ls * CLARKE_PCurr.Beta;
-
-    /* ---- 第四步：转子磁链 ψr = ψ - ψs ---- */
-    FluxR_in_wb[0] = Flux_in_wb[0] - FluxS_in_wb[0];
-    FluxR_in_wb[1] = Flux_in_wb[1] - FluxS_in_wb[1];
-
-    /* ---- 第五步：磁链幅值误差 ---- */
+    /* ---- Step 2: 磁链幅值误差（与 Step 1 同周期的 FluxR）---- */
     g_fluxfluxR = FluxR_in_wb[0] * FluxR_in_wb[0] + FluxR_in_wb[1] * FluxR_in_wb[1];
     Foc_observer.Err = Foc_observer.Flux * Foc_observer.Flux - g_fluxfluxR;
 
-    /* ---- 第六步：sinθ / cosθ（硬件浮点，直接算）---- */
+    /* ---- Step 3: sinθ / cosθ ---- */
     sin_theta = sinf(Foc_observer.Theta);
     cos_theta = cosf(Foc_observer.Theta);
 
-    /* ---- 第七步：PLL 锁相环 ---- */
+    /* ---- Step 4: PLL 锁相环（带积分抗饱和）---- */
     // PLL 误差 = q 轴转子磁链（理想情况下应为 0）
     Foc_observer.PLL_Err = FluxR_in_wb[1] * cos_theta - FluxR_in_wb[0] * sin_theta;
 
-    // PI 控制器
+    // PI 控制器（积分项有限幅）
     Foc_observer.PLL_Interg += Foc_observer.PLL_Err * Foc_observer.PLL_ki;
+
+    // 抗饱和: 限制积分项不超过最大电角速度对应的每周期步长
+    // 500Hz 电频率 → ωe_max = 2π×500 = 3141 rad/s → 每周期步长 = 3141×50µs = 0.157 rad
+    pll_ui_lim = 2.0f * PI * 500.0f * Foc_observer.Ctrl_ts;
+    Foc_observer.PLL_Interg = Limit_Sat(Foc_observer.PLL_Interg, pll_ui_lim, -pll_ui_lim);
+
     Foc_observer.PLL_Ui = Foc_observer.PLL_Err * Foc_observer.PLL_kp + Foc_observer.PLL_Interg;
+    Foc_observer.PLL_Ui = Limit_Sat(Foc_observer.PLL_Ui, pll_ui_lim, -pll_ui_lim);
 
     // 角度积分
     Foc_observer.Theta += Foc_observer.PLL_Ui;
 
     // 角度归一化 [0, 2π)
-    if (Foc_observer.Theta < 0.0f)
-        Foc_observer.Theta += 2.0f * PI;
-    else if (Foc_observer.Theta >= 2.0f * PI)
-        Foc_observer.Theta -= 2.0f * PI;
+    while (Foc_observer.Theta >= 2.0f * PI) Foc_observer.Theta -= 2.0f * PI;
+    while (Foc_observer.Theta < 0.0f)       Foc_observer.Theta += 2.0f * PI;
 
-    /* ---- 第八步：电频率计算与低通滤波 ---- */
+    /* ---- Step 5: 更新总磁链（用当前周期的 Err 做补偿，无延迟）---- */
+    VoltRs[0] = Foc_observer.Rs * CLARKE_PCurr.Alpha;
+    VoltdPhi[0] = Ualpha_cmd - VoltRs[0];
+    VoltdPhi[0] += FluxR_in_wb[0] * Foc_observer.Err * Foc_observer.Gain;  // ← 同周期 Err
+    Flux_in_wb[0] += VoltdPhi[0] * Foc_observer.Ctrl_ts;
+
+    VoltRs[1] = Foc_observer.Rs * CLARKE_PCurr.Beta;
+    VoltdPhi[1] = Ubeta_cmd - VoltRs[1];
+    VoltdPhi[1] += FluxR_in_wb[1] * Foc_observer.Err * Foc_observer.Gain;  // ← 同周期 Err
+    Flux_in_wb[1] += VoltdPhi[1] * Foc_observer.Ctrl_ts;
+
+    /* ---- Step 6: 定子磁链 ---- */
+    FluxS_in_wb[0] = Foc_observer.Ls * CLARKE_PCurr.Alpha;
+    FluxS_in_wb[1] = Foc_observer.Ls * CLARKE_PCurr.Beta;
+
+    /* ---- Step 7: 电频率计算与低通滤波 ---- */
     speed_acc += Foc_observer.PLL_Ui;
     speed_calc_cnt++;
 
     if (speed_calc_cnt >= 8)
     {
-        // 瞬时电频率: ωe(rad/s) → Hz
-        // speed_acc = Σ(PLL_Ui×8) = Σ(ωe×Ts×8), K = 1/(8×Ts×2π)
         speed_now = speed_acc / (8.0f * Foc_observer.Ctrl_ts * 2.0f * PI);
-        // 一阶低通滤波: 0.95×旧值 + 0.05×新值
         Foc_observer.speed_hz = Foc_observer.speed_hz * 0.95f + speed_now * 0.05f;
-
         speed_acc = 0.0f;
         speed_calc_cnt = 0;
+    }
+
+    /* ---- Step 8: PLL 增益恢复 ramp ---- */
+    if (Foc_observer.pll_ramp_active)
+    {
+        // 每周期向目标增益靠近 2%（指数收敛，约 100 周期 ≈ 5ms 恢复）
+        Foc_observer.PLL_kp += (Foc_observer.PLL_kp_target - Foc_observer.PLL_kp) * 0.02f;
+        Foc_observer.PLL_ki += (Foc_observer.PLL_ki_target - Foc_observer.PLL_ki) * 0.02f;
+
+        // 接近目标时直接到位
+        if (fabsf(Foc_observer.PLL_kp - Foc_observer.PLL_kp_target) < 0.05f &&
+            fabsf(Foc_observer.PLL_ki - Foc_observer.PLL_ki_target) < 0.05f)
+        {
+            Foc_observer.PLL_kp = Foc_observer.PLL_kp_target;
+            Foc_observer.PLL_ki = Foc_observer.PLL_ki_target;
+            Foc_observer.pll_ramp_active = 0;
+        }
     }
 }
 

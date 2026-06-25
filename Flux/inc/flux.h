@@ -26,6 +26,10 @@ typedef struct {
     float speed_hz_Old;    // 上一周期电频率
     float speed_hz_Acc;    // 频率加速度累加
     float speed_hz_Acc_Temp;
+    /* PLL gain ramp recovery */
+    float PLL_kp_target;   // 正常 Kp 目标值
+    float PLL_ki_target;   // 正常 Ki 目标值
+    uint8_t pll_ramp_active; // 1=正在恢复增益
 } FOC_OBSERVER_DEF;
 
 extern FOC_OBSERVER_DEF Foc_observer;
