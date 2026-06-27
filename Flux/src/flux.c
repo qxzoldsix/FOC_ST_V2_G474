@@ -85,12 +85,9 @@ static void Deadtime_Comp_ab(float *Ualpha_out, float *Ubeta_out)
     v_alpha_dist = 0.6666667f * v_dead * (sign_u - 0.5f * sign_v - 0.5f * sign_w);
     v_beta_dist  = 0.5773503f * v_dead * (sign_v - sign_w);  // 1/√3
 
-    /*
-     * 补偿：真实电压 = 命令电压 - 死区畸变电压
-     * 死区导致 I>0 时输出电压偏低、I<0 时偏高，观测器需还原真实电压
-     */
-    *Ualpha_out = Svpwm_dq.Ualpha - v_alpha_dist;
-    *Ubeta_out  = Svpwm_dq.Ubeta  - v_beta_dist;
+    /* 补偿：命令电压 + 畸变电压 = 真实电压 */
+    *Ualpha_out = Svpwm_dq.Ualpha + v_alpha_dist;
+    *Ubeta_out  = Svpwm_dq.Ubeta  + v_beta_dist;
 }
 
 /**

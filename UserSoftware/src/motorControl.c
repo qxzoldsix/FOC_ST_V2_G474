@@ -127,7 +127,11 @@ void Foc_Control(void)
                 float psi_r_mag = sqrtf(FluxR_in_wb[0] * FluxR_in_wb[0] +
                                         FluxR_in_wb[1] * FluxR_in_wb[1]);
                 if (psi_r_mag < Foc_observer.Flux * 0.3f) {
-                    /* 观测器未就绪 → 同步 PLL 到 VF 状态（仅此一次） */
+                    /*
+                     * 冷启动: 观测器从未运行（从 STOP/VF 直接切来）。
+                     * 同步 PLL 到 VF 状态一次 → 激活 ramp → 预加载电流环。
+                     * 之后让观测器自行收敛。风险较高，推荐走 Mode 4 预热后再切。
+                     */
                     Foc_observer.Theta      = motor.OpenTheta;
                     Foc_observer.PLL_Ui     = 2.0f * PI * motor.CurrentHz * Foc_observer.Ctrl_ts;
                     Foc_observer.PLL_Ui_Old = Foc_observer.PLL_Ui;
@@ -153,6 +157,27 @@ void Foc_Control(void)
                     SpeedRpm_GXieLv.XieLv_Grad = 0.5f;
                     SpeedRpm_GXieLv.Grad_Timer = 100;
                     SpeedRpm_GXieLv.Timer_Count = 0;
+                } else {
+                    /*
+                     * 暖启动: 观测器已在 Mode 4 预热就绪（磁链≥30% 参考值）。
+                     * PLL 已锁定不动它 → 只设速度斜坡 + 保守预加载 Iq 电流环。
+                     * 电压连续性好，切换最平滑。
+                     */
+                    float spd_est_rpm  = Foc_observer.speed_hz * 60.0f / (MOTOR_POLES / 2.0f);
+                    float spd_targ_rpm = motor.TargetHz * 60.0f / (MOTOR_POLES / 2.0f);
+                    /* 电流环预加载（VF 输出电压 ≈ Vq，保守 50%） */
+                    pi_iq.i1   = motor.V_amp * 0.5f;
+                    pi_iq.v1   = motor.V_amp * 0.5f;
+                    pi_iq.OutF = motor.V_amp * 0.5f;
+                    pi_id.i1   = 0.0f;
+                    pi_id.v1   = 0.0f;
+                    pi_id.OutF = 0.0f;
+                    /* 速度环: 从观测器估算转速起步 */
+                    SpeedRpm_GXieLv.XieLv_X    = spd_targ_rpm;
+                    SpeedRpm_GXieLv.XieLv_Y    = spd_est_rpm;
+                    SpeedRpm_GXieLv.XieLv_Grad = 0.5f;
+                    SpeedRpm_GXieLv.Grad_Timer = 100;
+                    SpeedRpm_GXieLv.Timer_Count = 0;
                 }
             }
             Angel_Get();            // 磁链观测器 → PLL → motor.IQAngle
@@ -166,17 +191,16 @@ void Foc_Control(void)
             VF_Control_Run(&motor);
             break;
 
-        case 4: /* VF → Sensorless — VF 启动自动切磁链观测器 */
+        case 4: /* PREPOS — VF 驱动 + 观测器后台预热（不自动切换） */
             /*
              * 流程:
              *   1. VF 开环驱动 PWM (用 VF 角度)
              *   2. 后台跑 Clarke → 观测器, 磁链积分器用真实 Vᵅᵝ/Iᵅᵝ 预热
-             *   3. CurrentHz 达阈值时: 同步 PLL 角度/频率到 VF, 降 PLL 增益,
-             *      电流环预加载 V_amp, 速度环从 CurrentHz 斜坡起步.
-             *   4. 切 mode2 — 观测器无缝衔接.
+             *   3. 用户在 Vofa/LCD 上确认磁链幅值 → MOTOR_FLUX、PLL_Err → 0 后,
+             *      手动按键切 Mode 2 (SENSORLESS)
              *
-             * 关键: 磁链积分器不重置! 让它在 VF 期间从真实电压电流自然收敛,
-             *       切换时 PLL 从 VF 角度起步跟踪已预热好的磁链, 避免突变.
+             * 关键: 不自动切换! 让观测器充分预热 >100ms, 确认收敛后再手动切.
+             *       磁链积分器不重置, 让它从真实电压电流自然收敛.
              */
             VF_Control_Run(&motor);
 
@@ -185,12 +209,6 @@ void Foc_Control(void)
             CLARKE_PCurr.Vs = Volt_CurrPara.PhaseV_Curr;
             CLARKE_Cale((p_CLARKE)&CLARKE_PCurr);
             Angel_Get();   // Observer_Run → 磁链积分预热 + PLL 跟踪
-
-            if (motor.CurrentHz >= VF_TO_SENSORLESS_HZ) {
-                VF_to_Sensorless_Sync();   /* PLL 同步 + 降增益 + 电流环预加载 */
-                /* 注意: 磁链积分器已在上面预热, 此处不清零! */
-                motor.Control_Mode = 2;
-            }
             break;
 
         default:

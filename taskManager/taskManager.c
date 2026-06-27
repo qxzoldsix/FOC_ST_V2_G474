@@ -80,7 +80,7 @@ void KEY_RUN(void)
 
     /* ---- KEY2 (PC8): short = mode cycle: STOP->VF->Sensorless->Prepos->STOP ---- */
     if (key_array[key_sw2].key_value == key_click_one) {
-        static const uint8_t mode_cycle[] = {0, 3, 2, 4};  // STOP, VF, Sensorless, Prepos
+        static const uint8_t mode_cycle[] = {0, 3, 4, 2};  // STOP, VF, PREPOS, Sensorless
         uint8_t i;
         for (i = 0; i < 4; i++) {
             if (motor.Control_Mode == mode_cycle[i]) break;
