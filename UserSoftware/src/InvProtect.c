@@ -9,11 +9,11 @@ static uint8_t fault_latch = FAULT_NONE;  // 故障锁存
 void InvProtect_Check(void)
 {
 //    /* 已有锁存故障 → 保持，不再重复检测 */
-    if (fault_latch != FAULT_NONE) {
-        motor.Control_Mode = 0;         // 保持停机
-        motor.Fault_DTC = fault_latch;
-        return;
-    }
+//    if (fault_latch != FAULT_NONE) {
+//        motor.Control_Mode = 0;         // 保持停机
+//        motor.Fault_DTC = fault_latch;
+//        return;
+//    }
 
 //    /* ---- 相过流检测 ---- */
 //    float iu = Volt_CurrPara.PhaseU_Curr;
@@ -31,11 +31,11 @@ void InvProtect_Check(void)
 //    else if (fault_latch == FAULT_NONE && vbus < UV_THRESHOLD_V) fault_latch = FAULT_UV;
 
 //    /* ---- 触发保护: 锁存 + 停机 + 封锁 PWM ---- */
-//    if (fault_latch != FAULT_NONE) {
-//        motor.Control_Mode = 0;
-//        motor.Fault_DTC = fault_latch;
-//        Foc_Pwm_Stop();
-//    }
+    if (fault_latch != FAULT_NONE) {
+        motor.Control_Mode = 0;
+        motor.Fault_DTC = fault_latch;
+        Foc_Pwm_Stop();
+    }
 }
 
 /**

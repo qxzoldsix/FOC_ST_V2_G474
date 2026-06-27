@@ -4,13 +4,7 @@ Control_FB motor = Control_FB_DEFAULTS;
 SVPWM Svpwm_zero = SVPWM_DEFAULTS;
 ADCSample ADCSampPara = ADCSamp_DEFAULTS;
 
-/* ========== VF → 无感 FOC 自动过渡参数 ========== */
-#define VF_TO_SENSORLESS_HZ  10.0f  // 切无感阈值(Hz): 太低反电动势不够, 观测器无法收敛
 
-/* ========== Mode 4 预定位参数 ========== */
-#define I_PREPOS_A      0.5f        // 预定位直流电流 (A)
-#define PREPOS_TIME_MS  800         // 预定位持续时间 (ms)
-static uint32_t prepos_tick = 0;    // 预定位计时器 (PWM 周期数)
 
 /**
  * VF → 无感 FOC 平滑过渡

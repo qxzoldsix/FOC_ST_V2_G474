@@ -70,8 +70,8 @@ I (../UserSoftware/inc/ADC_SAMPLE.h)(0x6A2D016D)
 I (../UserSoftware/inc/Common_Math.h)(0x6A28400C)
 I (../UserSoftware/inc/PI_Cale.h)(0x6A2D03C3)
 I (../UserSoftware/inc/svpwm.h)(0x6A21A804)
-I (../UserSoftware/inc/InvProtect.h)(0x6A2D011B)
-I (../UserSoftware/inc/motorControl.h)(0x6A283F4D)
+I (../UserSoftware/inc/InvProtect.h)(0x6A3F89F9)
+I (../UserSoftware/inc/motorControl.h)(0x6A3F858F)
 I (../Foc_Control/inc/Foc.h)(0x6A2D0D87)
 I (../Foc_Control/inc/VF.h)(0x6A28429F)
 I (../UserSoftware/inc/DrvPwmout.h)(0x6A21A804)
@@ -448,8 +448,8 @@ I (../UserSoftware/inc/ADC_SAMPLE.h)(0x6A2D016D)
 I (../UserSoftware/inc/Common_Math.h)(0x6A28400C)
 I (../UserSoftware/inc/PI_Cale.h)(0x6A2D03C3)
 I (../UserSoftware/inc/svpwm.h)(0x6A21A804)
-I (../UserSoftware/inc/InvProtect.h)(0x6A2D011B)
-I (../UserSoftware/inc/motorControl.h)(0x6A283F4D)
+I (../UserSoftware/inc/InvProtect.h)(0x6A3F89F9)
+I (../UserSoftware/inc/motorControl.h)(0x6A3F858F)
 I (../Foc_Control/inc/Foc.h)(0x6A2D0D87)
 I (../Foc_Control/inc/VF.h)(0x6A28429F)
 I (../UserSoftware/inc/DrvPwmout.h)(0x6A21A804)
@@ -2124,8 +2124,8 @@ I (../UserSoftware/inc/ADC_SAMPLE.h)(0x6A2D016D)
 I (../UserSoftware/inc/Common_Math.h)(0x6A28400C)
 I (../UserSoftware/inc/PI_Cale.h)(0x6A2D03C3)
 I (../UserSoftware/inc/svpwm.h)(0x6A21A804)
-I (../UserSoftware/inc/InvProtect.h)(0x6A2D011B)
-I (../UserSoftware/inc/motorControl.h)(0x6A283F4D)
+I (../UserSoftware/inc/InvProtect.h)(0x6A3F89F9)
+I (../UserSoftware/inc/motorControl.h)(0x6A3F858F)
 I (../Foc_Control/inc/Foc.h)(0x6A2D0D87)
 I (../Foc_Control/inc/VF.h)(0x6A28429F)
 I (../UserSoftware/inc/DrvPwmout.h)(0x6A21A804)
@@ -2288,8 +2288,8 @@ I (../UserSoftware/inc/ADC_SAMPLE.h)(0x6A2D016D)
 I (../UserSoftware/inc/Common_Math.h)(0x6A28400C)
 I (../UserSoftware/inc/PI_Cale.h)(0x6A2D03C3)
 I (../UserSoftware/inc/svpwm.h)(0x6A21A804)
-I (../UserSoftware/inc/InvProtect.h)(0x6A2D011B)
-I (../UserSoftware/inc/motorControl.h)(0x6A283F4D)
+I (../UserSoftware/inc/InvProtect.h)(0x6A3F89F9)
+I (../UserSoftware/inc/motorControl.h)(0x6A3F858F)
 I (../Foc_Control/inc/Foc.h)(0x6A2D0D87)
 I (../Foc_Control/inc/VF.h)(0x6A28429F)
 I (../UserSoftware/inc/DrvPwmout.h)(0x6A21A804)
@@ -2364,8 +2364,8 @@ I (../UserSoftware/inc/ADC_SAMPLE.h)(0x6A2D016D)
 I (../UserSoftware/inc/Common_Math.h)(0x6A28400C)
 I (../UserSoftware/inc/PI_Cale.h)(0x6A2D03C3)
 I (../UserSoftware/inc/svpwm.h)(0x6A21A804)
-I (../UserSoftware/inc/InvProtect.h)(0x6A2D011B)
-I (../UserSoftware/inc/motorControl.h)(0x6A283F4D)
+I (../UserSoftware/inc/InvProtect.h)(0x6A3F89F9)
+I (../UserSoftware/inc/motorControl.h)(0x6A3F858F)
 I (../Foc_Control/inc/Foc.h)(0x6A2D0D87)
 I (../Foc_Control/inc/VF.h)(0x6A28429F)
 I (../UserSoftware/inc/DrvPwmout.h)(0x6A21A804)
@@ -2440,8 +2440,8 @@ I (../UserSoftware/inc/ADC_SAMPLE.h)(0x6A2D016D)
 I (../UserSoftware/inc/Common_Math.h)(0x6A28400C)
 I (../UserSoftware/inc/PI_Cale.h)(0x6A2D03C3)
 I (../UserSoftware/inc/svpwm.h)(0x6A21A804)
-I (../UserSoftware/inc/InvProtect.h)(0x6A2D011B)
-I (../UserSoftware/inc/motorControl.h)(0x6A283F4D)
+I (../UserSoftware/inc/InvProtect.h)(0x6A3F89F9)
+I (../UserSoftware/inc/motorControl.h)(0x6A3F858F)
 I (../Foc_Control/inc/Foc.h)(0x6A2D0D87)
 I (../Foc_Control/inc/VF.h)(0x6A28429F)
 I (../UserSoftware/inc/DrvPwmout.h)(0x6A21A804)
@@ -2516,15 +2516,15 @@ I (../UserSoftware/inc/ADC_SAMPLE.h)(0x6A2D016D)
 I (../UserSoftware/inc/Common_Math.h)(0x6A28400C)
 I (../UserSoftware/inc/PI_Cale.h)(0x6A2D03C3)
 I (../UserSoftware/inc/svpwm.h)(0x6A21A804)
-I (../UserSoftware/inc/InvProtect.h)(0x6A2D011B)
-I (../UserSoftware/inc/motorControl.h)(0x6A283F4D)
+I (../UserSoftware/inc/InvProtect.h)(0x6A3F89F9)
+I (../UserSoftware/inc/motorControl.h)(0x6A3F858F)
 I (../Foc_Control/inc/Foc.h)(0x6A2D0D87)
 I (../Foc_Control/inc/VF.h)(0x6A28429F)
 I (../UserSoftware/inc/DrvPwmout.h)(0x6A21A804)
 I (../Flux/inc/flux.h)(0x6A3D5250)
 I (../taskManager/taskManager.h)(0x6A2843BD)
-F (..\UserSoftware\src\InvProtect.c)(0x6A363894)(--c99 -c --cpu Cortex-M4.fp.sp -D__MICROLIB -g -O3 --apcs=interwork --split_sections -I ../Core/Inc -I ../USB_Device/App -I ../USB_Device/Target -I ../Drivers/STM32G4xx_HAL_Driver/Inc -I ../Drivers/STM32G4xx_HAL_Driver/Inc/Legacy -I ../Middlewares/ST/STM32_USB_Device_Library/Core/Inc -I ../Middlewares/ST/STM32_USB_Device_Library/Class/CDC/Inc -I ../Drivers/CMSIS/Device/ST/STM32G4xx/Include -I ../Drivers/CMSIS/Include -I ../pmsmConfig_Inc -I ../taskManager -I ../LCD -I ../Key -I ../Foc_Control/inc -I ../UserSoftware/inc -I ../Flux/inc-I.\RTE\_FOC_ST_V2-IC:\Keil_v5\ARM\Pack\ARM\CMSIS\6.1.0\CMSIS\Core\Include-IC:\Keil_v5\ARM\Pack\Keil\STM32G4xx_DFP\1.4.0\Drivers\CMSIS\Device\ST\STM32G4xx\Include-D__UVISION_VERSION="541" -DSTM32G474xx -D_RTE_ -DUSE_HAL_DRIVER -DSTM32G474xx-o foc_st_v2\invprotect.o --omf_browse foc_st_v2\invprotect.crf --depend foc_st_v2\invprotect.d)
-I (../UserSoftware/inc/InvProtect.h)(0x6A2D011B)
+F (..\UserSoftware\src\InvProtect.c)(0x6A3F8A5F)(--c99 -c --cpu Cortex-M4.fp.sp -D__MICROLIB -g -O3 --apcs=interwork --split_sections -I ../Core/Inc -I ../USB_Device/App -I ../USB_Device/Target -I ../Drivers/STM32G4xx_HAL_Driver/Inc -I ../Drivers/STM32G4xx_HAL_Driver/Inc/Legacy -I ../Middlewares/ST/STM32_USB_Device_Library/Core/Inc -I ../Middlewares/ST/STM32_USB_Device_Library/Class/CDC/Inc -I ../Drivers/CMSIS/Device/ST/STM32G4xx/Include -I ../Drivers/CMSIS/Include -I ../pmsmConfig_Inc -I ../taskManager -I ../LCD -I ../Key -I ../Foc_Control/inc -I ../UserSoftware/inc -I ../Flux/inc-I.\RTE\_FOC_ST_V2-IC:\Keil_v5\ARM\Pack\ARM\CMSIS\6.1.0\CMSIS\Core\Include-IC:\Keil_v5\ARM\Pack\Keil\STM32G4xx_DFP\1.4.0\Drivers\CMSIS\Device\ST\STM32G4xx\Include-D__UVISION_VERSION="541" -DSTM32G474xx -D_RTE_ -DUSE_HAL_DRIVER -DSTM32G474xx-o foc_st_v2\invprotect.o --omf_browse foc_st_v2\invprotect.crf --depend foc_st_v2\invprotect.d)
+I (../UserSoftware/inc/InvProtect.h)(0x6A3F89F9)
 I (../pmsmConfig_Inc/headline.h)(0x6A2D0513)
 I (C:\Keil_v5\ARM\ARMCC\include\stdint.h)(0x5475F300)
 I (C:\Keil_v5\ARM\ARMCC\include\math.h)(0x672F3A54)
@@ -2593,13 +2593,13 @@ I (../UserSoftware/inc/ADC_SAMPLE.h)(0x6A2D016D)
 I (../UserSoftware/inc/Common_Math.h)(0x6A28400C)
 I (../UserSoftware/inc/PI_Cale.h)(0x6A2D03C3)
 I (../UserSoftware/inc/svpwm.h)(0x6A21A804)
-I (../UserSoftware/inc/motorControl.h)(0x6A283F4D)
+I (../UserSoftware/inc/motorControl.h)(0x6A3F858F)
 I (../Foc_Control/inc/Foc.h)(0x6A2D0D87)
 I (../Foc_Control/inc/VF.h)(0x6A28429F)
 I (../UserSoftware/inc/DrvPwmout.h)(0x6A21A804)
 I (../Flux/inc/flux.h)(0x6A3D5250)
 I (../taskManager/taskManager.h)(0x6A2843BD)
-F (..\UserSoftware\src\motorControl.c)(0x6A3D5762)(--c99 -c --cpu Cortex-M4.fp.sp -D__MICROLIB -g -O3 --apcs=interwork --split_sections -I ../Core/Inc -I ../USB_Device/App -I ../USB_Device/Target -I ../Drivers/STM32G4xx_HAL_Driver/Inc -I ../Drivers/STM32G4xx_HAL_Driver/Inc/Legacy -I ../Middlewares/ST/STM32_USB_Device_Library/Core/Inc -I ../Middlewares/ST/STM32_USB_Device_Library/Class/CDC/Inc -I ../Drivers/CMSIS/Device/ST/STM32G4xx/Include -I ../Drivers/CMSIS/Include -I ../pmsmConfig_Inc -I ../taskManager -I ../LCD -I ../Key -I ../Foc_Control/inc -I ../UserSoftware/inc -I ../Flux/inc-I.\RTE\_FOC_ST_V2-IC:\Keil_v5\ARM\Pack\ARM\CMSIS\6.1.0\CMSIS\Core\Include-IC:\Keil_v5\ARM\Pack\Keil\STM32G4xx_DFP\1.4.0\Drivers\CMSIS\Device\ST\STM32G4xx\Include-D__UVISION_VERSION="541" -DSTM32G474xx -D_RTE_ -DUSE_HAL_DRIVER -DSTM32G474xx-o foc_st_v2\motorcontrol.o --omf_browse foc_st_v2\motorcontrol.crf --depend foc_st_v2\motorcontrol.d)
+F (..\UserSoftware\src\motorControl.c)(0x6A3F8595)(--c99 -c --cpu Cortex-M4.fp.sp -D__MICROLIB -g -O3 --apcs=interwork --split_sections -I ../Core/Inc -I ../USB_Device/App -I ../USB_Device/Target -I ../Drivers/STM32G4xx_HAL_Driver/Inc -I ../Drivers/STM32G4xx_HAL_Driver/Inc/Legacy -I ../Middlewares/ST/STM32_USB_Device_Library/Core/Inc -I ../Middlewares/ST/STM32_USB_Device_Library/Class/CDC/Inc -I ../Drivers/CMSIS/Device/ST/STM32G4xx/Include -I ../Drivers/CMSIS/Include -I ../pmsmConfig_Inc -I ../taskManager -I ../LCD -I ../Key -I ../Foc_Control/inc -I ../UserSoftware/inc -I ../Flux/inc-I.\RTE\_FOC_ST_V2-IC:\Keil_v5\ARM\Pack\ARM\CMSIS\6.1.0\CMSIS\Core\Include-IC:\Keil_v5\ARM\Pack\Keil\STM32G4xx_DFP\1.4.0\Drivers\CMSIS\Device\ST\STM32G4xx\Include-D__UVISION_VERSION="541" -DSTM32G474xx -D_RTE_ -DUSE_HAL_DRIVER -DSTM32G474xx-o foc_st_v2\motorcontrol.o --omf_browse foc_st_v2\motorcontrol.crf --depend foc_st_v2\motorcontrol.d)
 I (../pmsmConfig_Inc/headline.h)(0x6A2D0513)
 I (C:\Keil_v5\ARM\ARMCC\include\stdint.h)(0x5475F300)
 I (C:\Keil_v5\ARM\ARMCC\include\math.h)(0x672F3A54)
@@ -2668,8 +2668,8 @@ I (../UserSoftware/inc/ADC_SAMPLE.h)(0x6A2D016D)
 I (../UserSoftware/inc/Common_Math.h)(0x6A28400C)
 I (../UserSoftware/inc/PI_Cale.h)(0x6A2D03C3)
 I (../UserSoftware/inc/svpwm.h)(0x6A21A804)
-I (../UserSoftware/inc/InvProtect.h)(0x6A2D011B)
-I (../UserSoftware/inc/motorControl.h)(0x6A283F4D)
+I (../UserSoftware/inc/InvProtect.h)(0x6A3F89F9)
+I (../UserSoftware/inc/motorControl.h)(0x6A3F858F)
 I (../Foc_Control/inc/Foc.h)(0x6A2D0D87)
 I (../Foc_Control/inc/VF.h)(0x6A28429F)
 I (../UserSoftware/inc/DrvPwmout.h)(0x6A21A804)
@@ -2744,8 +2744,8 @@ I (../UserSoftware/inc/ADC_SAMPLE.h)(0x6A2D016D)
 I (../UserSoftware/inc/Common_Math.h)(0x6A28400C)
 I (../UserSoftware/inc/PI_Cale.h)(0x6A2D03C3)
 I (../UserSoftware/inc/svpwm.h)(0x6A21A804)
-I (../UserSoftware/inc/InvProtect.h)(0x6A2D011B)
-I (../UserSoftware/inc/motorControl.h)(0x6A283F4D)
+I (../UserSoftware/inc/InvProtect.h)(0x6A3F89F9)
+I (../UserSoftware/inc/motorControl.h)(0x6A3F858F)
 I (../Foc_Control/inc/Foc.h)(0x6A2D0D87)
 I (../Foc_Control/inc/VF.h)(0x6A28429F)
 I (../UserSoftware/inc/DrvPwmout.h)(0x6A21A804)
@@ -2820,8 +2820,8 @@ I (../UserSoftware/inc/ADC_SAMPLE.h)(0x6A2D016D)
 I (../UserSoftware/inc/Common_Math.h)(0x6A28400C)
 I (../UserSoftware/inc/PI_Cale.h)(0x6A2D03C3)
 I (../UserSoftware/inc/svpwm.h)(0x6A21A804)
-I (../UserSoftware/inc/InvProtect.h)(0x6A2D011B)
-I (../UserSoftware/inc/motorControl.h)(0x6A283F4D)
+I (../UserSoftware/inc/InvProtect.h)(0x6A3F89F9)
+I (../UserSoftware/inc/motorControl.h)(0x6A3F858F)
 I (../Foc_Control/inc/Foc.h)(0x6A2D0D87)
 I (../Foc_Control/inc/VF.h)(0x6A28429F)
 I (../UserSoftware/inc/DrvPwmout.h)(0x6A21A804)
@@ -2896,8 +2896,8 @@ I (../UserSoftware/inc/ADC_SAMPLE.h)(0x6A2D016D)
 I (../UserSoftware/inc/Common_Math.h)(0x6A28400C)
 I (../UserSoftware/inc/PI_Cale.h)(0x6A2D03C3)
 I (../UserSoftware/inc/svpwm.h)(0x6A21A804)
-I (../UserSoftware/inc/InvProtect.h)(0x6A2D011B)
-I (../UserSoftware/inc/motorControl.h)(0x6A283F4D)
+I (../UserSoftware/inc/InvProtect.h)(0x6A3F89F9)
+I (../UserSoftware/inc/motorControl.h)(0x6A3F858F)
 I (../Foc_Control/inc/Foc.h)(0x6A2D0D87)
 I (../Foc_Control/inc/VF.h)(0x6A28429F)
 I (../UserSoftware/inc/DrvPwmout.h)(0x6A21A804)
@@ -2973,8 +2973,8 @@ I (../UserSoftware/inc/ADC_SAMPLE.h)(0x6A2D016D)
 I (../UserSoftware/inc/Common_Math.h)(0x6A28400C)
 I (../UserSoftware/inc/PI_Cale.h)(0x6A2D03C3)
 I (../UserSoftware/inc/svpwm.h)(0x6A21A804)
-I (../UserSoftware/inc/InvProtect.h)(0x6A2D011B)
-I (../UserSoftware/inc/motorControl.h)(0x6A283F4D)
+I (../UserSoftware/inc/InvProtect.h)(0x6A3F89F9)
+I (../UserSoftware/inc/motorControl.h)(0x6A3F858F)
 I (../Foc_Control/inc/Foc.h)(0x6A2D0D87)
 I (../Foc_Control/inc/VF.h)(0x6A28429F)
 I (../UserSoftware/inc/DrvPwmout.h)(0x6A21A804)
