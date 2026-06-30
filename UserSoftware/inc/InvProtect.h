@@ -18,5 +18,6 @@
 
 void InvProtect_Check(void);
 void InvProtect_Clear(void);
+void InvProtect_Enable(void);
 
 #endif

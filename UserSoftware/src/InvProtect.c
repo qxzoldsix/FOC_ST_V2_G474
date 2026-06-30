@@ -1,13 +1,12 @@
 #include "InvProtect.h"
 
-static uint8_t fault_latch = FAULT_NONE;  // 故障锁存
+static uint8_t fault_latch = FAULT_NONE;   // 故障锁存
+static uint8_t protect_enabled = 0;        // 保护使能，校准完成后置1
 
-/**
- * 逆变器保护检查（每个 PWM 周期调用）
- * 检测过流/过压/欠压，首次触发时锁存故障码并强制停机
- */
 void InvProtect_Check(void)
 {
+    if (!protect_enabled) return;           // 校准未完成，跳过保护
+
 //    /* 已有锁存故障 → 保持，不再重复检测 */
 //    if (fault_latch != FAULT_NONE) {
 //        motor.Control_Mode = 0;         // 保持停机
@@ -36,6 +35,11 @@ void InvProtect_Check(void)
         motor.Fault_DTC = fault_latch;
         Foc_Pwm_Stop();
     }
+}
+
+void InvProtect_Enable(void)
+{
+    protect_enabled = 1;
 }
 
 /**
