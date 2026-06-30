@@ -7,27 +7,27 @@ void InvProtect_Check(void)
 {
     if (!protect_enabled) return;           // 校准未完成，跳过保护
 
-//    /* 已有锁存故障 → 保持，不再重复检测 */
-//    if (fault_latch != FAULT_NONE) {
-//        motor.Control_Mode = 0;         // 保持停机
-//        motor.Fault_DTC = fault_latch;
-//        return;
-//    }
+    /* 已有锁存故障 → 保持，不再重复检测 */
+    if (fault_latch != FAULT_NONE) {
+        motor.Control_Mode = 0;         // 保持停机
+        motor.Fault_DTC = fault_latch;
+        return;
+    }
 
-//    /* ---- 相过流检测 ---- */
-//    float iu = Volt_CurrPara.PhaseU_Curr;
-//    float iv = Volt_CurrPara.PhaseV_Curr;
-//    float iw = Volt_CurrPara.PhaseW_Curr;
+    /* ---- 相过流检测 ---- */
+    float iu = Volt_CurrPara.PhaseU_Curr;
+    float iv = Volt_CurrPara.PhaseV_Curr;
+    float iw = Volt_CurrPara.PhaseW_Curr;
 
-//    if      (iu > OC_THRESHOLD_A || iu < -OC_THRESHOLD_A) fault_latch = FAULT_OC_U;
-//    else if (iv > OC_THRESHOLD_A || iv < -OC_THRESHOLD_A) fault_latch = FAULT_OC_V;
-//    else if (iw > OC_THRESHOLD_A || iw < -OC_THRESHOLD_A) fault_latch = FAULT_OC_W;
+    if      (iu > OC_THRESHOLD_A || iu < -OC_THRESHOLD_A) fault_latch = FAULT_OC_U;
+    else if (iv > OC_THRESHOLD_A || iv < -OC_THRESHOLD_A) fault_latch = FAULT_OC_V;
+    else if (iw > OC_THRESHOLD_A || iw < -OC_THRESHOLD_A) fault_latch = FAULT_OC_W;
 
-//    /* ---- 母线过/欠压检测 ---- */
-//    float vbus = Volt_CurrPara.BUS_Voltage;
+    /* ---- 母线过/欠压检测 ---- */
+    float vbus = Volt_CurrPara.BUS_Voltage;
 
-//    if      (fault_latch == FAULT_NONE && vbus > OV_THRESHOLD_V) fault_latch = FAULT_OV;
-//    else if (fault_latch == FAULT_NONE && vbus < UV_THRESHOLD_V) fault_latch = FAULT_UV;
+    if      (fault_latch == FAULT_NONE && vbus > OV_THRESHOLD_V) fault_latch = FAULT_OV;
+    else if (fault_latch == FAULT_NONE && vbus < UV_THRESHOLD_V) fault_latch = FAULT_UV;
 
 //    /* ---- 触发保护: 锁存 + 停机 + 封锁 PWM ---- */
     if (fault_latch != FAULT_NONE) {

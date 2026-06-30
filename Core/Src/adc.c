@@ -137,6 +137,31 @@ void MX_ADC1_Init(void)
   }
   /* USER CODE BEGIN ADC1_Init 2 */
 
+  /* PA3/ADC1_IN4 母线电流 — 加入注入组，扩为 4 路 */
+  {
+    ADC_InjectionConfTypeDef sInj = {0};
+    sInj.InjectedSamplingTime        = ADC_SAMPLETIME_47CYCLES_5;
+    sInj.InjectedSingleDiff          = ADC_SINGLE_ENDED;
+    sInj.InjectedOffsetNumber        = ADC_OFFSET_NONE;
+    sInj.InjectedOffset              = 0;
+    sInj.InjectedNbrOfConversion     = 4;
+    sInj.InjectedDiscontinuousConvMode = DISABLE;
+    sInj.AutoInjectedConv            = DISABLE;
+    sInj.QueueInjectedContext        = DISABLE;
+    sInj.ExternalTrigInjecConv       = ADC_EXTERNALTRIGINJEC_T1_CC4;
+    sInj.ExternalTrigInjecConvEdge   = ADC_EXTERNALTRIGINJECCONV_EDGE_FALLING;
+    sInj.InjecOversamplingMode       = DISABLE;
+
+    sInj.InjectedChannel = ADC_CHANNEL_1; sInj.InjectedRank = ADC_INJECTED_RANK_1;
+    HAL_ADCEx_InjectedConfigChannel(&hadc1, &sInj);
+    sInj.InjectedChannel = ADC_CHANNEL_2; sInj.InjectedRank = ADC_INJECTED_RANK_2;
+    HAL_ADCEx_InjectedConfigChannel(&hadc1, &sInj);
+    sInj.InjectedChannel = ADC_CHANNEL_3; sInj.InjectedRank = ADC_INJECTED_RANK_3;
+    HAL_ADCEx_InjectedConfigChannel(&hadc1, &sInj);
+    sInj.InjectedChannel = ADC_CHANNEL_4; sInj.InjectedRank = ADC_INJECTED_RANK_4;
+    HAL_ADCEx_InjectedConfigChannel(&hadc1, &sInj);
+  }
+
   /* USER CODE END ADC1_Init 2 */
 
 }

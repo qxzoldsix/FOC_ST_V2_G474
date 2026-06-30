@@ -193,7 +193,7 @@
         <Ww>
           <count>7</count>
           <WinNumber>1</WinNumber>
-          <ItemText>adc2_val0,0x0A</ItemText>
+          <ItemText>adc2_val0</ItemText>
         </Ww>
         <Ww>
           <count>8</count>
@@ -309,6 +309,11 @@
           <count>30</count>
           <WinNumber>1</WinNumber>
           <ItemText>Volt_CurrPara</ItemText>
+        </Ww>
+        <Ww>
+          <count>31</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>motor.Fault_DTC</ItemText>
         </Ww>
       </WatchWindow1>
       <Tracepoint>
