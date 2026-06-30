@@ -27,7 +27,7 @@ void Flux_Observer_Init(void)
     Foc_observer.PLL_Ui = 0.0f;
 
     Foc_observer.Ctrl_ts = 5e-5f;       // 控制周期 20kHz (Ts = 1/20000 = 50µs)
-    Foc_observer.Gain = 5000.0f;        // 磁链幅值补偿增益（过大→震荡啸叫，过小→收敛慢）
+    Foc_observer.Gain = 150000.0f;       // 磁链幅值补偿增益（对齐参考项目，确保低速收敛）
     Foc_observer.Err = 0.0f;
     Foc_observer.Theta = 0.0f;
     Foc_observer.speed_hz = 0.0f;

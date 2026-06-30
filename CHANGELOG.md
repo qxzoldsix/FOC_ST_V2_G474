@@ -1,6 +1,56 @@
-# FOC_ST_V2 观测器修复变更记录
+# FOC_ST_V2 变更记录
 
-> 日期: 2025-06-27 | 版本: V2_0611 hotfix v2
+> 最后更新: 2026-06-30 | 版本: V2_0611
+
+---
+
+## 6.30 变更：基础设施修复 + VF→无感问题诊断
+
+### 修复 1: 进 Debug 误触发 Fault_DTC=0x02
+
+**根因**: `HAL_ADCEx_InjectedStart_IT` 启动早于 `PMSM_init()`(零点校准)，首次 ADC 中断触发时偏置为 0，V 相电流误算为 ~16A → 触发 FAULT_OC_V。
+
+**修复**: `InvProtect.c` 新增 `protect_enabled` 标志 + `InvProtect_Enable()`。`main.c` 在 `PMSM_init()` 之后调用 `InvProtect_Enable()`。校准完成前 `InvProtect_Check()` 直接 return。
+
+### 修复 2: ADC 零点校准不准（静止时 ~0.5A）
+
+**根因**: `ZeroCurrOffset_Calibration()` 1000 次循环在 ~10µs 内跑完，但 ADC 注入转换每 50µs 才更新一次 JDR。1000 次读的全是同一个采样值，"平均"毫无意义。
+
+**修复**: 每次采样后加入 `for(volatile uint16_t d=0; d<500; d++)` 延迟，确保读到 1000 个不同周期采样值。
+
+### 新增 3: 母线电流采集
+
+- **硬件**: PA3/ADC1_IN4 配置为模拟输入 (`gpio.c`)；ADC1 注入组扩为 4 路 (`adc.c`)
+- **ADC 读取**: `Foc_Adc_Sample()` 读 `ADC1->JDR4` → `BUS_Curr_Raw`
+- **零点校准**: `ZeroCurrOffset_Calibration()` 同步校准 `OffsetBUS_Raw`
+- **实际使用**: `Foc_Para_Calc()` 用重构公式计算准确的直流侧平均电流：
+  ```
+  BUS_Curr = (I_u×SVPTa + I_v×SVPTb + I_w×SVPTc) / 4000
+  ```
+  原因：母线电流采样电阻在低侧三电阻汇流点下方，采样瞬时受 PWM 矢量状态影响，单点 ADC 值不代表平均电流。
+
+### 工程 4: .gitignore 添加
+
+Keil MDK 构建产物 (`*.o *.d *.crf *.axf *.htm *.lnp *.map *.dep 等`) 不再被 git 跟踪。
+
+### 问题诊断 5: VF→无感 观测器无法闭环
+
+**链路现状** (见下方详细分析):
+
+| Mode | 行为 | 状态 |
+|------|------|------|
+| 3 (VF) | `VF_Control_Run()` 开环驱动 | ✅ 电机可转 |
+| 4 (PREPOS) | `break;` 空操作 | ❌ VF停止/观测器不运行 |
+| 2 (Sensorless) | `Angel_Get()` 盲启 | ❌ 观测器从零开始 |
+
+**缺口**:
+- ❶ Mode 4 为空，没有 VF 驱动+观测器预热
+- ❷ 从 VF 切 Mode 2 时无状态同步，`VF_to_Sensorless_Sync()` 被删除
+- ❸ 观测器 `Theta/Flux/PLL` 全部从零冷启动
+
+---
+
+## 6.27 变更：VF 分离调试架构（历史）
 
 ---
 

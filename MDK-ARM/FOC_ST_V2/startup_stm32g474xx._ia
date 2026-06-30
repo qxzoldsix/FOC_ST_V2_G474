@@ -1,0 +1,6 @@
+--cpu Cortex-M4.fp.sp -g --apcs=interwork --pd "__MICROLIB SETA 1"
+-I.\RTE\_FOC_ST_V2
+-IC:\Keil_v5\ARM\Pack\ARM\CMSIS\6.1.0\CMSIS\Core\Include
+-IC:\Keil_v5\ARM\Pack\Keil\STM32G4xx_DFP\1.4.0\Drivers\CMSIS\Device\ST\STM32G4xx\Include
+--pd "__UVISION_VERSION SETA 541" --pd "STM32G474xx SETA 1" --pd "_RTE_ SETA 1"
+--list startup_stm32g474xx.lst --xref -o foc_st_v2\startup_stm32g474xx.o --depend foc_st_v2\startup_stm32g474xx.d "startup_stm32g474xx.s"
