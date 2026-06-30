@@ -114,6 +114,7 @@ int main(void)
 
 	Foc_Pwm_Start();
 	PMSM_init();
+	InvProtect_Enable();   // 零点校准完成后才启用保护，避免误触发
 		Flux_Observer_Init();
 		PI_Init();  // 初始化速度环/电流环 PI 参数 
  /* USER CODE END 2 */

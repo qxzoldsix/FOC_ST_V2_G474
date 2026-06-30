@@ -18,5 +18,6 @@
 
 void InvProtect_Check(void);
 void InvProtect_Clear(void);
+void InvProtect_Enable(void);   // 校准完成后调用，启用保护检测
 
 #endif
