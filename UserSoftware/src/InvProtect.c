@@ -23,6 +23,12 @@ void InvProtect_Check(void)
     else if (iv > OC_THRESHOLD_A || iv < -OC_THRESHOLD_A) fault_latch = FAULT_OC_V;
     else if (iw > OC_THRESHOLD_A || iw < -OC_THRESHOLD_A) fault_latch = FAULT_OC_W;
 
+    /* ---- 母线电流过流检测 ---- */
+    float ibus = Volt_CurrPara.BUS_Curr;
+
+    if      (fault_latch == FAULT_NONE && ibus >  OC_BUS_THRESHOLD_A) fault_latch = FAULT_OC_BUS;
+    else if (fault_latch == FAULT_NONE && ibus < -OC_BUS_THRESHOLD_A) fault_latch = FAULT_OC_BUS;
+
     /* ---- 母线过/欠压检测 ---- */
     float vbus = Volt_CurrPara.BUS_Voltage;
 
