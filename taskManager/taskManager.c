@@ -7,7 +7,7 @@ TaskTime  TasksPare[Task_Num];
 /**
  * Vofa JustFloat 数据上报 (1ms / ~1kHz)
  *
- * CH1: PLL_Err        — PLL 角度误差, 正常 ≈ 0
+ * CH1: PLL_Err        — PLL 角度误差, SMO 正常 ≈ 0
  * CH2: FluxR_mag      — 转子磁链幅值, 正常 ≈ MOTOR_FLUX
  * CH3: speed_hz / Hz  — 观测器估算电频率 (无感) 或 VF CurrentHz
  * CH4: Id (Ds)        — d 轴电流反馈, Id=0 控制时 ≈ 0
