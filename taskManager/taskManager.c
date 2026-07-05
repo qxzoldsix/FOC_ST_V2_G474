@@ -7,58 +7,24 @@ TaskTime  TasksPare[Task_Num];
 /**
  * Vofa JustFloat 数据上报 (1ms / ~1kHz)
  *
- * CH1: PLL_Err        — PLL 角度误差, 正常 ≈ 0
- * CH2: FluxR_mag      — 转子磁链幅值, 正常 ≈ MOTOR_FLUX
- * CH3: speed_hz / Hz  — 观测器估算电频率 (无感) 或 VF CurrentHz
- * CH4: Id (Ds)        — d 轴电流反馈, Id=0 控制时 ≈ 0
- * CH5: Iq (Qs)        — q 轴电流反馈 (转矩电流)
- * CH6: BUS_Voltage    — 母线电压
+ * CH1: CurrentHz      — 当前电频率 (Hz)
+ * CH2: Id (Ds)        — d 轴电流反馈, Id=0 控制时 ≈ 0
+ * CH3: Iq (Qs)        — q 轴电流反馈 (转矩电流)
+ * CH4: Vd             — d 轴电压输出 (pu)
+ * CH5: Vq             — q 轴电压输出 (pu)
+ * CH6: BUS_Voltage    — 母线电压 (V)
  */
 void HFPeriod_RUN(void)
 {
     static uint8_t buf[28];
     float *p = (float *)buf;
 
-    float fluxr_mag = sqrtf(FluxR_in_wb[0] * FluxR_in_wb[0] +
-                            FluxR_in_wb[1] * FluxR_in_wb[1]);
-    float flux_theta = atan2f(FluxR_in_wb[1], FluxR_in_wb[0]);
-    float curr_theta = atan2f(CLARKE_PCurr.Beta, CLARKE_PCurr.Alpha);
-    float theta_err = Foc_observer.Theta - motor.OpenTheta;
-    float flux_err = flux_theta - motor.OpenTheta;
-    float pll_flux_err = Foc_observer.Theta - flux_theta;
-    float curr_flux_err = curr_theta - flux_theta;
-
-    while (theta_err > PI) {
-        theta_err -= 2.0f * PI;
-    }
-    while (theta_err < -PI) {
-        theta_err += 2.0f * PI;
-    }
-    while (flux_err > PI) {
-        flux_err -= 2.0f * PI;
-    }
-    while (flux_err < -PI) {
-        flux_err += 2.0f * PI;
-    }
-    while (pll_flux_err > PI) {
-        pll_flux_err -= 2.0f * PI;
-    }
-    while (pll_flux_err < -PI) {
-        pll_flux_err += 2.0f * PI;
-    }
-    while (curr_flux_err > PI) {
-        curr_flux_err -= 2.0f * PI;
-    }
-    while (curr_flux_err < -PI) {
-        curr_flux_err += 2.0f * PI;
-    }
-
-    p[0] = flux_err;
-    p[1] = pll_flux_err;
-    p[2] = curr_flux_err;
-    p[3] = PARK_PCurr.Ds;
-    p[4] = PARK_PCurr.Qs;
-    p[5] = fluxr_mag;
+    p[0] = motor.CurrentHz;
+    p[1] = PARK_PCurr.Ds;
+    p[2] = PARK_PCurr.Qs;
+    p[3] = motor.V_d;
+    p[4] = motor.V_q;
+    p[5] = Volt_CurrPara.BUS_Voltage;
 
     // JustFloat frame tail
     buf[24] = 0x00;
