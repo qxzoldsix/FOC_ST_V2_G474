@@ -3,7 +3,7 @@
 #include "headline.h"
 
 /* ========== 电机参数（运行时可切换方案待实现）========== */
-#define MOTOR_RS    0.007525f   // 定子电阻 (Ω)
+#define MOTOR_RS    0.875f   // 定子电阻 (Ω)
 #define MOTOR_LS    0.0002f    // 定子电感 (H)，关系启动顺滑性
 #define MOTOR_FLUX  0.00752f    // 永磁体磁链 (Wb)
 #define MOTOR_POLES 14          // 极对数

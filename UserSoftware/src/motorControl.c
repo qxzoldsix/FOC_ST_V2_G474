@@ -124,75 +124,57 @@ void Foc_Control(void)
              * 同步 PLL 到当前 VF 状态作为起点, 之后让观测器自行收敛.
              * 重要: 不能每个周期都复位 PLL, 否则角度无法累加 → 电机锁死.
              */
-            if (mode_just_entered) {
-                float psi_r_mag;
-                float speed_err_hz;
-                sensorless_ticks = 0;
+            // if (mode_just_entered) {
+            //     float psi_r_mag;
+            //     sensorless_ticks = 0;
 
-                if (fabsf(motor.CurrentHz) < VF_TO_SENSORLESS_HZ ||
-                    prepos_ticks < PREPOS_MIN_READY_TICKS) {
-                    motor.Control_Mode = 4;
-                    break;
-                }
+            //     psi_r_mag = sqrtf(FluxR_in_wb[0] * FluxR_in_wb[0] +
+            //                       FluxR_in_wb[1] * FluxR_in_wb[1]);
 
-                psi_r_mag = sqrtf(FluxR_in_wb[0] * FluxR_in_wb[0] +
-                                  FluxR_in_wb[1] * FluxR_in_wb[1]);
-                speed_err_hz = fabsf(Foc_observer.speed_hz - motor.CurrentHz);
+            //     UVW_Axis_DQ();
 
-                if (psi_r_mag < Foc_observer.Flux * SENSORLESS_READY_FLUX_MIN ||
-                    psi_r_mag > Foc_observer.Flux * SENSORLESS_READY_FLUX_MAX ||
-                    speed_err_hz > SENSORLESS_READY_SPEED_ERR ||
-                    fabsf(Foc_observer.PLL_Err) > SENSORLESS_READY_PLL_ERR ||
-                    fabsf(PARK_PCurr.Ds) > SENSORLESS_READY_ID_ABS ||
-                    fabsf(PARK_PCurr.Qs) > SENSORLESS_READY_IQ_ABS) {
-                    motor.Control_Mode = 4;
-                    break;
-                }
-
-                UVW_Axis_DQ();
-
-                if (psi_r_mag < Foc_observer.Flux * 0.3f) {
-                    /*
-                     * 冷启动: 观测器从未运行（从 STOP/VF 直接切来）。
-                     * 同步 PLL 到 VF 状态一次 → 激活 ramp → 预加载电流环。
-                     * 之后让观测器自行收敛。风险较高，推荐走 Mode 4 预热后再切。
-                     */
-                    Foc_observer.Theta      = motor.OpenTheta;
-                    Foc_observer.PLL_Ui     = 2.0f * PI * motor.CurrentHz * Foc_observer.Ctrl_ts;
-                    Foc_observer.PLL_Ui_Old = Foc_observer.PLL_Ui;
-                    Foc_observer.PLL_Interg = Foc_observer.PLL_Ui;
-                    Foc_observer.PLL_Err    = 0.0f;
-                    Foc_observer.speed_hz   = motor.CurrentHz;
-                    /* 激��?PLL 增益 ramp */
-                    Foc_observer.PLL_kp_target = 20.0f;
-                    Foc_observer.PLL_ki_target = 10.0f;
-                    Foc_observer.PLL_kp = 4.0f;
-                    Foc_observer.PLL_ki = 1.0f;
-                    Foc_observer.pll_ramp_active = 1;
-                    Sensorless_Handoff_Preload(
-                        motor.CurrentHz * 60.0f / (MOTOR_POLES / 2.0f),
-                        motor.TargetHz * 60.0f / (MOTOR_POLES / 2.0f));
-                } else {
-                    /*
-                     * 暖启动: 观测器已在 Mode 4 预热就绪（磁链≥30% 参考值）。
-                     * PLL 已锁定不动它 → 只设速度斜坡 + 保守预加载 Iq 电流环。
-                     * 电压连续性好，切换最平滑。
-                     */
-                    float spd_est_rpm  = Foc_observer.speed_hz * 60.0f / (MOTOR_POLES / 2.0f);
-                    float spd_targ_rpm = motor.TargetHz * 60.0f / (MOTOR_POLES / 2.0f);
-                    Sensorless_Handoff_Preload(spd_est_rpm, spd_targ_rpm);
-                }
-            }
+            //     // if (psi_r_mag < Foc_observer.Flux * 0.3f) {
+            //     //     /*
+            //     //      * 冷启动: 观测器从未运行（从 STOP/VF 直接切来）。
+            //     //      * 同步 PLL 到 VF 状态一次 → 激活 ramp → 预加载电流环。
+            //     //      * 之后让观测器自行收敛。风险较高，推荐走 Mode 4 预热后再切。
+            //     //      */
+            //     //     Foc_observer.Theta      = motor.OpenTheta;
+            //     //     Foc_observer.PLL_Ui     = 2.0f * PI * motor.CurrentHz * Foc_observer.Ctrl_ts;
+            //     //     Foc_observer.PLL_Ui_Old = Foc_observer.PLL_Ui;
+            //     //     Foc_observer.PLL_Interg = Foc_observer.PLL_Ui;
+            //     //     Foc_observer.PLL_Err    = 0.0f;
+            //     //     Foc_observer.speed_hz   = motor.CurrentHz;
+            //     //     /* 激��?PLL 增益 ramp */
+            //     //     Foc_observer.PLL_kp_target = 20.0f;
+            //     //     Foc_observer.PLL_ki_target = 10.0f;
+            //     //     Foc_observer.PLL_kp = 4.0f;
+            //     //     Foc_observer.PLL_ki = 1.0f;
+            //     //     Foc_observer.pll_ramp_active = 1;
+            //     //     Sensorless_Handoff_Preload(
+            //     //         motor.CurrentHz * 60.0f / (MOTOR_POLES / 2.0f),
+            //     //         motor.TargetHz * 60.0f / (MOTOR_POLES / 2.0f));
+            //     // } else {
+            //     //     /*
+            //     //      * 暖启动: 观测器已在 Mode 4 预热就绪（磁链≥30% 参考值）。
+            //     //      * PLL 已锁定不动它 → 只设速度斜坡 + 保守预加载 Iq 电流环。
+            //     //      * 电压连续性好，切换最平滑。
+            //     //      */
+            //     //     float spd_est_rpm  = Foc_observer.speed_hz * 60.0f / (MOTOR_POLES / 2.0f);
+            //     //     float spd_targ_rpm = motor.TargetHz * 60.0f / (MOTOR_POLES / 2.0f);
+            //     //     Sensorless_Handoff_Preload(spd_est_rpm, spd_targ_rpm);
+            //     // }
+            // }
             Angel_Get();            // 磁链观测器 → PLL → motor.IQAngle
             UVW_Axis_DQ();          // Clarke → Park → Id/Iq
             Speed_FOC();            // 速度环 PI → Iq 给定
-            if (sensorless_ticks < SENSORLESS_SOFTSTART_TICKS) {
-                float iq_lim = SENSORLESS_HANDOFF_IQ_ABS +
-                               (pi_spd.Umax - SENSORLESS_HANDOFF_IQ_ABS) *
-                               ((float)sensorless_ticks / (float)SENSORLESS_SOFTSTART_TICKS);
-                I_q_GXieLv.XieLv_Y = Limit_Sat(I_q_GXieLv.XieLv_Y, iq_lim, -iq_lim);
-                sensorless_ticks++;
-            }
+            // if (sensorless_ticks < SENSORLESS_SOFTSTART_TICKS) {
+            //     float iq_lim = SENSORLESS_HANDOFF_IQ_ABS +
+            //                    (pi_spd.Umax - SENSORLESS_HANDOFF_IQ_ABS) *
+            //                    ((float)sensorless_ticks / (float)SENSORLESS_SOFTSTART_TICKS);
+            //     I_q_GXieLv.XieLv_Y = Limit_Sat(I_q_GXieLv.XieLv_Y, iq_lim, -iq_lim);
+            //     sensorless_ticks++;
+            // }
             Idq_FOC();              // 电流环 PI → Vd/Vq
             FOC_Svpwm_dq();         // 反 Park → SVPWM → PWM 更新
             break;
