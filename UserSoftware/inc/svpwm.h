@@ -1,3 +1,8 @@
+/**
+ * @file    svpwm.h
+ * @author  nono <nono_1007@foxmail.com>
+ * @brief   SVPWM 结构体定义 + 七段式调制
+ */
 #ifndef __SVPWM_H_
 #define __SVPWM_H_
 

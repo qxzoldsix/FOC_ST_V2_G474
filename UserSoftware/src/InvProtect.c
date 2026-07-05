@@ -1,3 +1,8 @@
+/**
+ * @file    InvProtect.c
+ * @author  nono <nono_1007@foxmail.com>
+ * @brief   逆变器保护: 相过流/母线过流检测 + 故障锁存
+ */
 #include "InvProtect.h"
 
 static uint8_t fault_latch = FAULT_NONE;   // 故障锁存

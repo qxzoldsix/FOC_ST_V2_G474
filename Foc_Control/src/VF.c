@@ -1,3 +1,8 @@
+/**
+ * @file    VF.c
+ * @author  nono <nono_1007@foxmail.com>
+ * @brief   V/F 开环压频控制: 频率斜坡 + 电压斜坡 + 角度积分 + SVPWM 输出
+ */
 #include "headline.h"
 
 

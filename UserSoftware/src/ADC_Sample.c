@@ -1,3 +1,8 @@
+/**
+ * @file    ADC_Sample.c
+ * @author  nono <nono_1007@foxmail.com>
+ * @brief   ADC 采样: 注入组读取三相电流/母线电压 + 电流零点校准
+ */
 #include "headline.h"
 
 Volt_Curr Volt_CurrPara = Volt_Curr_DEFAULTS;

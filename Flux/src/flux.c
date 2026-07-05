@@ -1,3 +1,8 @@
+/**
+ * @file    flux.c
+ * @author  nono <nono_1007@foxmail.com>
+ * @brief   电压模型磁链观测器: 死区补偿 + 磁链积分 + PLL 锁相环
+ */
 #include "flux.h"
 
 FOC_OBSERVER_DEF Foc_observer;

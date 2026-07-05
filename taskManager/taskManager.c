@@ -1,3 +1,8 @@
+/**
+ * @file    taskManager.c
+ * @author  nono <nono_1007@foxmail.com>
+ * @brief   时间片任务调度 + Vofa 数据上报 + 按键处理 + LCD 显示
+ */
 #include "headline.h"
 
 
@@ -124,9 +129,9 @@ void Task_DEBUG(void)
     // ============ 顶部状态栏：模式 + V_amp ============
     switch (motor.Control_Mode) {
         case 0: LCD_ShowString(75, 5, (uint8_t *)"[STOP]       ", WHITE, DARKBLUE, 12, 0); break;			
-        case 1: LCD_ShowString(75, 5, (uint8_t *)"[SENSOR]     ", GREEN, DARKBLUE, 12, 0); break;			//READY
-			  case 2: LCD_ShowString(75, 5, (uint8_t *)"[SENSORLESS] ", GREEN, DARKBLUE, 12, 0); break;     // 有感
-				case 3: LCD_ShowString(75, 5, (uint8_t *)"[ VF ]       ", GREEN, DARKBLUE, 12, 0); break;     // 无感
+        case 1: LCD_ShowString(75, 5, (uint8_t *)"[SENSOR]     ", GREEN, DARKBLUE, 12, 0); break;
+			  case 2: LCD_ShowString(75, 5, (uint8_t *)"[SENSORLESS] ", GREEN, DARKBLUE, 12, 0); break;     // 无感FOC
+				case 3: LCD_ShowString(75, 5, (uint8_t *)"[ VF ]       ", GREEN, DARKBLUE, 12, 0); break;     // VF开环
         case 4: LCD_ShowString(75, 5, (uint8_t *)"[PREPOS]     ", GREEN, DARKBLUE, 12, 0); break;
         default: LCD_ShowString(75, 5, (uint8_t *)"[ ?? ]      ", WHITE, DARKBLUE, 12, 0); break;
     }
@@ -149,11 +154,11 @@ void Task_DEBUG(void)
     }
 
     // ============ 数据行 ============
-    // y=60: 当前频率 / 估算频率
+    // y=60: 当前频率
     LCD_ShowString(5, 60, (uint8_t *)"FHz", WHITE, BLACK, 12, 0);
     LCD_ShowFloatNum1(45, 60, motor.CurrentHz, 5, 1, GREEN, BLACK, 12);
 
-    // y=78: PLL 误差 / 磁链幅值
+    // y=78: PLL 误差
     LCD_ShowString(5, 78, (uint8_t *)"PLL", WHITE, BLACK, 12, 0);
     LCD_ShowFloatNum1(45, 78, Foc_observer.PLL_Err, 5, 3, YELLOW, BLACK, 12);
 
@@ -166,7 +171,7 @@ void Task_DEBUG(void)
         LCD_ShowFloatNum1(45, 96, motor.OpenTheta, 5, 2, BRRED, BLACK, 12);
     }
 
-    // y=114: 磁链幅值 |ψr| / 故障码
+    // y=114: 磁链幅值 |ψr|
     {
         float fluxr_mag = sqrtf(FluxR_in_wb[0] * FluxR_in_wb[0] +
                                 FluxR_in_wb[1] * FluxR_in_wb[1]);

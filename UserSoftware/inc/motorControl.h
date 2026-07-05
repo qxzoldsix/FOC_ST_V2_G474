@@ -1,3 +1,8 @@
+/**
+ * @file    motorControl.h
+ * @author  nono <nono_1007@foxmail.com>
+ * @brief   FOC 控制主状态机 API
+ */
 #ifndef __MOTORCONTROL_H_
 #define __MOTORCONTROL_H_
 #include "headline.h"
