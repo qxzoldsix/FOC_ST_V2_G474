@@ -30,10 +30,10 @@ void InvProtect_Check(void)
     else if (fault_latch == FAULT_NONE && ibus < -OC_BUS_THRESHOLD_A) fault_latch = FAULT_OC_BUS;
 
     /* ---- 母线过/欠压检测 ---- */
-    float vbus = Volt_CurrPara.BUS_Voltage;
+//    float vbus = Volt_CurrPara.BUS_Voltage;
 
-    if      (fault_latch == FAULT_NONE && vbus > OV_THRESHOLD_V) fault_latch = FAULT_OV;
-    else if (fault_latch == FAULT_NONE && vbus < UV_THRESHOLD_V) fault_latch = FAULT_UV;
+//    if      (fault_latch == FAULT_NONE && vbus > OV_THRESHOLD_V) fault_latch = FAULT_OV;
+//    else if (fault_latch == FAULT_NONE && vbus < UV_THRESHOLD_V) fault_latch = FAULT_UV;
 
 //    /* ---- 触发保护: 锁存 + 停机 + 封锁 PWM ---- */
     if (fault_latch != FAULT_NONE) {

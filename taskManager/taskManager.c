@@ -21,15 +21,44 @@ void HFPeriod_RUN(void)
 
     float fluxr_mag = sqrtf(FluxR_in_wb[0] * FluxR_in_wb[0] +
                             FluxR_in_wb[1] * FluxR_in_wb[1]);
+    float flux_theta = atan2f(FluxR_in_wb[1], FluxR_in_wb[0]);
+    float curr_theta = atan2f(CLARKE_PCurr.Beta, CLARKE_PCurr.Alpha);
+    float theta_err = Foc_observer.Theta - motor.OpenTheta;
+    float flux_err = flux_theta - motor.OpenTheta;
+    float pll_flux_err = Foc_observer.Theta - flux_theta;
+    float curr_flux_err = curr_theta - flux_theta;
 
-    p[0] = Foc_observer.PLL_Err;
-    p[1] = fluxr_mag;
-    p[2] = (motor.Control_Mode == 2 || motor.Control_Mode == 4)
-               ? Foc_observer.speed_hz
-               : motor.CurrentHz;
+    while (theta_err > PI) {
+        theta_err -= 2.0f * PI;
+    }
+    while (theta_err < -PI) {
+        theta_err += 2.0f * PI;
+    }
+    while (flux_err > PI) {
+        flux_err -= 2.0f * PI;
+    }
+    while (flux_err < -PI) {
+        flux_err += 2.0f * PI;
+    }
+    while (pll_flux_err > PI) {
+        pll_flux_err -= 2.0f * PI;
+    }
+    while (pll_flux_err < -PI) {
+        pll_flux_err += 2.0f * PI;
+    }
+    while (curr_flux_err > PI) {
+        curr_flux_err -= 2.0f * PI;
+    }
+    while (curr_flux_err < -PI) {
+        curr_flux_err += 2.0f * PI;
+    }
+
+    p[0] = flux_err;
+    p[1] = pll_flux_err;
+    p[2] = curr_flux_err;
     p[3] = PARK_PCurr.Ds;
     p[4] = PARK_PCurr.Qs;
-    p[5] = Volt_CurrPara.BUS_Voltage;
+    p[5] = fluxr_mag;
 
     // JustFloat frame tail
     buf[24] = 0x00;

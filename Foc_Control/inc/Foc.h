@@ -6,6 +6,8 @@
 #define  PARK_DEFAULTS {0,0,0,0,0,0,0}
 #define  IPARK_DEFAULTS {0,0,0,0,0,0,0}  
 
+#define CURRENT_USE_W_AS_V  0
+
 typedef struct 
 {	  
 	float  V_d;                //Vd电流环输入

@@ -4,8 +4,8 @@
 #include "headline.h"
 
 /* ========== 保护阈值 ========== */
-#define OC_THRESHOLD_A      10.0f   // 相过流阈值 (A)
-#define OC_BUS_THRESHOLD_A  5.0f    // 母线电流过流阈值 (A)
+#define OC_THRESHOLD_A      20.0f   // 相过流阈值 (A)
+#define OC_BUS_THRESHOLD_A  15.0f    // 母线电流过流阈值 (A)
 #define OV_THRESHOLD_V      30.0f   // 母线过压阈值 (V)
 #define UV_THRESHOLD_V      8.0f    // 母线欠压阈值 (V)
 

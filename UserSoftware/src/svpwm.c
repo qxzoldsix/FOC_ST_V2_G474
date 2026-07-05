@@ -1,4 +1,17 @@
 #include "headline.h"
+
+static uint16_t svpwm_to_ccr(float t)
+{
+    int32_t ccr = (int32_t)(t * Volt_CurrPara.Svpwm_Km_BackwS * PWM_HalfPerMax) + PWM_HalfPerMax;
+
+    if (ccr < 0) {
+        ccr = 0;
+    } else if (ccr > TIM1_ARR) {
+        ccr = TIM1_ARR;
+    }
+
+    return (uint16_t)ccr;
+}
 void svpwm_Cale(p_SVPWM pV){
     pV->tmp1= pV->Ubeta;   //Vref1
     pV->tmp2= pV->Ubeta*0.5f + pV->Ualpha*0.8660254f ;//vref2
@@ -31,7 +44,7 @@ void svpwm_Cale(p_SVPWM pV){
         pV->Tb=0;
         pV->Tc=0;
     }
-    pV->SVPTa=(int16_t)(pV->Ta*Volt_CurrPara.Svpwm_Km_BackwS*PWM_HalfPerMax)+PWM_HalfPerMax;
-    pV->SVPTb=(int16_t)(pV->Tb*Volt_CurrPara.Svpwm_Km_BackwS*PWM_HalfPerMax)+PWM_HalfPerMax;
-    pV->SVPTc=(int16_t)(pV->Tc*Volt_CurrPara.Svpwm_Km_BackwS*PWM_HalfPerMax)+PWM_HalfPerMax;//Ä¸ÏßµçÑ¹²¹³¥
+    pV->SVPTa = svpwm_to_ccr(pV->Ta);
+    pV->SVPTb = svpwm_to_ccr(pV->Tb);
+    pV->SVPTc = svpwm_to_ccr(pV->Tc);
 }

@@ -17,10 +17,10 @@ _RAM_FUNC void Foc_Adc_Sample(p_ADCSample pADC)
 	pADC->BUS_Curr_Raw  = ADC1->JDR4;   // PA3/ADC1_IN4 母线电流
 
 //    //  Convert ADC values to actual currents with offset compensation and scaling
-	Volt_CurrPara.PhaseU_Curr=((float)pADC->PhaseU_Raw-ADCSampPara.OffsetPhaseU_Raw)*Curr_Ratio;
-	Volt_CurrPara.PhaseV_Curr=((float)pADC->PhaseV_Raw-ADCSampPara.OffsetPhaseV_Raw)*Curr_Ratio;
-	Volt_CurrPara.PhaseW_Curr=((float)pADC->PhaseW_Raw-ADCSampPara.OffsetPhaseW_Raw)*Curr_Ratio;
-	Volt_CurrPara.BUS_Curr    =((float)pADC->BUS_Curr_Raw-ADCSampPara.OffsetBUS_Raw)  *Curr_Ratio;
+	Volt_CurrPara.PhaseU_Curr=-((float)pADC->PhaseU_Raw-ADCSampPara.OffsetPhaseU_Raw)*Curr_Ratio;
+	Volt_CurrPara.PhaseV_Curr=-((float)pADC->PhaseV_Raw-ADCSampPara.OffsetPhaseV_Raw)*Curr_Ratio;
+	Volt_CurrPara.PhaseW_Curr=-((float)pADC->PhaseW_Raw-ADCSampPara.OffsetPhaseW_Raw)*Curr_Ratio;
+	Volt_CurrPara.BUS_Curr    =-((float)pADC->BUS_Curr_Raw-ADCSampPara.OffsetBUS_Raw)  *Curr_Ratio;
 //    pADC->foc.i_a = ((float) pADC->adc.ia - pADC->adc.ia_off) * pADC->board.i_ratio;
 //    pADC->foc.i_b = ((float) pADC->adc.ib - pADC->adc.ib_off) * pADC->board.i_ratio;
 //    pADC->foc.i_c = ((float) pADC->adc.ic - pADC->adc.ic_off) * pADC->board.i_ratio;
