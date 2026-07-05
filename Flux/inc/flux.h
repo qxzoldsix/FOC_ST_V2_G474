@@ -18,14 +18,10 @@ typedef struct {
     float PLL_Err;         // PLL 角度误差
     float PLL_Interg;      // PLL 积分累加值
     float PLL_Ui;          // PLL PI 输出（电角速度）
-    float PLL_Ui_Old;      // 上一周期 PLL 输出
     float Ctrl_ts;         // FOC 控制周期 (s)
     float Err;             // 磁链幅值误差
     float Theta;           // 转子电角度 (rad)
     float speed_hz;        // 转子电频率 (Hz)
-    float speed_hz_Old;    // 上一周期电频率
-    float speed_hz_Acc;    // 频率加速度累加
-    float speed_hz_Acc_Temp;
     /* PLL gain ramp recovery */
     float PLL_kp_target;   // 正常 Kp 目标值
     float PLL_ki_target;   // 正常 Ki 目标值
@@ -36,7 +32,6 @@ extern FOC_OBSERVER_DEF Foc_observer;
 
 /* 磁链中间变量（αβ 坐标系，单位 Wb） */
 extern float Flux_in_wb[2];    // 总磁链
-extern float FluxS_in_wb[2];   // 定子磁链
 extern float FluxR_in_wb[2];   // 转子磁链
 
 void Flux_Observer_Init(void);

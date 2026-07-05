@@ -6,7 +6,7 @@
 #ifndef __FOC_H_
 #define __FOC_H_
 #include "headline.h"
-#define  Control_FB_DEFAULTS  {0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0,0,0,0}
+#define  Control_FB_DEFAULTS  {0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0,0,0}
 #define  CLARKE_DEFAULTS {0,0,0,0,0} 
 #define  PARK_DEFAULTS {0,0,0,0,0,0,0}
 #define  IPARK_DEFAULTS {0,0,0,0,0,0,0}  
@@ -18,27 +18,14 @@ typedef struct
 	float  V_d;                // Vd 电压输出
 	float  V_q;                // Vq 电压输出
 	float V_amp;               // 电压幅值
-//	float  I_d_fb;             //Idq����
-//	float  I_q_fb;             //Idq����
-	float  I_d;                //d����������
-	float  I_q;                //q����������
-	float  CANV_q;
-	float  Posref;					//λ�òο�
-	float  Torque_Fbk;			
-	float  Speed_Start;     
-	float  UI_Watt_Temp;
-	float  Step_Count;
-	float  Motor_Speed;
-	float  SpeedRPM;			
-  float CurrentHz;					//��Ƶ��
-	float OpenTheta;					//VF
-	float TargetHz;
-	float TargetVolt;
-	uint8_t    Fault_DTC;      //oc1��2��������ѹ��Ƿѹ
-	int16_t IQAngle;
-//	int16_t IQAngle_JZ;
-	int8_t  Move_State;        //�����ת״̬
-	uint8_t Control_Mode;			//0��ͣ�� 1���и� 2��svc 3:VF
+	float  SpeedRPM;			// 机械转速 (RPM)
+	float CurrentHz;			// 当前电频率 (Hz)
+	float OpenTheta;			// VF 开环角度 (rad)
+	float TargetHz;				// 目标电频率 (Hz)
+	float TargetVolt;			// 目标电压 (V)
+	uint8_t    Fault_DTC;      // 故障码
+	int16_t IQAngle;            // 电角度 (0~4095)
+	uint8_t Control_Mode;		// 0:停机 1:有感 2:无感 3:VF 4:预定位
 }Control_FB;
 
 typedef struct {

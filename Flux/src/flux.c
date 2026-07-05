@@ -7,7 +7,6 @@
 
 FOC_OBSERVER_DEF Foc_observer;
 float Flux_in_wb[2];    // 总磁链（气隙磁链）αβ 分量
-float FluxS_in_wb[2];   // 定子磁链 αβ 分量（ψs = Ls × I）
 float FluxR_in_wb[2];   // 转子磁链 αβ 分量（ψr = ψ - ψs）
 
 /* 转速计算用静态变量 */
@@ -45,9 +44,6 @@ void Flux_Observer_Init(void)
     /* 磁链积分初值清零 */
     Flux_in_wb[0] = 0.0f;
     Flux_in_wb[1] = 0.0f;
-
-    FluxS_in_wb[0] = 0.0f;
-    FluxS_in_wb[1] = 0.0f;
 
     FluxR_in_wb[0] = 0.0f;
     FluxR_in_wb[1] = 0.0f;
@@ -172,11 +168,7 @@ void Observer_Run(void)
     VoltdPhi[1] += FluxR_in_wb[1] * Foc_observer.Err * Foc_observer.Gain;  // ← 同周期 Err
     Flux_in_wb[1] += VoltdPhi[1] * Foc_observer.Ctrl_ts;
 
-    /* ---- Step 6: 定子磁链 ---- */
-    FluxS_in_wb[0] = Foc_observer.Ls * CLARKE_PCurr.Alpha;
-    FluxS_in_wb[1] = Foc_observer.Ls * CLARKE_PCurr.Beta;
-
-    /* ---- Step 7: 电频率计算与低通滤波 ---- */
+    /* ---- Step 6: 电频率计算与低通滤波 ---- */
     speed_acc += Foc_observer.PLL_Ui;
     speed_calc_cnt++;
 
