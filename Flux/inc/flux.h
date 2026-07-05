@@ -2,6 +2,15 @@
 #define __FLUX_H_
 #include "headline.h"
 
+/* ========== 观测器类型选择 ========== */
+#define OBS_FLUX_VOLTAGE     0   // 电压型磁链观测器 (当前)
+#define OBS_EKF              1   // 扩展卡尔曼滤波
+#define OBS_FLUX_NONLINEAR   2   // 非线性磁链观测器
+#define OBS_LUENBERGER       3   // 龙伯格观测器
+#define OBS_SMO              4   // 滑模观测器
+
+#define OBSERVER_TYPE  OBS_FLUX_VOLTAGE   // <-- 在此切换观测器
+
 /* ========== 电机参数（运行时可切换方案待实现）========== */
 #define MOTOR_RS    0.875f   // 定子电阻 (Ω)
 #define MOTOR_LS    0.0002f    // 定子电感 (H)，关系启动顺滑性
@@ -37,4 +46,14 @@ extern float FluxR_in_wb[2];   // 转子磁链
 void Flux_Observer_Init(void);
 void Observer_Run(void);
 void Angel_Get(void);
+
+/* ========== 初始位置检测 (IPD) ========== */
+void IPD_SixPulse_Injection(void);   // 六脉冲注入定位
+void IPD_HFI_Injection(void);        // 高频注入定位 (HFI)
+
+/* ========== 备选观测器 (空壳, 待实现) ========== */
+void Observer_Run_EKF(void);
+void Observer_Run_NonlinearFlux(void);
+void Observer_Run_Luenberger(void);
+void Observer_Run_SMO(void);
 #endif

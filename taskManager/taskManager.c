@@ -18,10 +18,13 @@ TaskTime  TasksPare[Task_Num];
  * CH4: Vd             — d 轴电压输出 (pu)
  * CH5: Vq             — q 轴电压输出 (pu)
  * CH6: BUS_Voltage    — 母线电压 (V)
+ * CH7: PhaseU_Curr    — U 相电流 (A)
+ * CH8: PhaseV_Curr    — V 相电流 (A)
+ * CH9: PhaseW_Curr    — W 相电流 (A)
  */
 void HFPeriod_RUN(void)
 {
-    static uint8_t buf[28];
+    static uint8_t buf[40];   // 9 floats × 4 + 4 byte tail = 40
     float *p = (float *)buf;
 
     p[0] = motor.CurrentHz;
@@ -30,12 +33,15 @@ void HFPeriod_RUN(void)
     p[3] = motor.V_d;
     p[4] = motor.V_q;
     p[5] = Volt_CurrPara.BUS_Voltage;
+    p[6] = Volt_CurrPara.PhaseU_Curr;
+    p[7] = Volt_CurrPara.PhaseV_Curr;
+    p[8] = Volt_CurrPara.PhaseW_Curr;
 
     // JustFloat frame tail
-    buf[24] = 0x00;
-    buf[25] = 0x00;
-    buf[26] = 0x80;
-    buf[27] = 0x7F;
+    buf[36] = 0x00;
+    buf[37] = 0x00;
+    buf[38] = 0x80;
+    buf[39] = 0x7F;
 
     CDC_Transmit_FS(buf, sizeof(buf));
 }
