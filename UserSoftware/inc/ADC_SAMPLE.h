@@ -24,7 +24,7 @@
 #define Curr_Ratio    (V_REF / ADC_MAX/SenseRes/Curr_OP)
 #define OFFSET_CALIB_CNT 1000
 
-#define NOMINAL_BUS_VOLTAGE  24.0f  // 标称母线电压 (V), 用于 SVPWM 前馈补偿
+#define NOMINAL_BUS_VOLTAGE  12.0f  // 标称母线电压 (V), 用于 SVPWM 前馈补偿
 
 typedef struct {
     uint16_t PhaseU_Raw;    // U 相电流原始采样值
