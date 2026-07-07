@@ -15,10 +15,16 @@
 /* ========== 电机参数（运行时可切换方案待实现）========== */
 #define MOTOR_RS    0.875f      // 定子电阻 (Ω)
 #define MOTOR_LS    0.0002f     // 定子电感 (H) — 表贴式电机 Ld≈Lq≈Ls
-#define MOTOR_LD    0.0002f     // d 轴电感 (H)，
+#define MOTOR_LD    0.0002f     // d 轴电感 (H)
 #define MOTOR_LQ    0.0002f     // q 轴电感 (H)
 #define MOTOR_FLUX  0.00752f    // 永磁体磁链 (Wb)
 #define MOTOR_POLES 14          // 极对数
+
+/* ========== Hybrid Active Flux 观测器参数 ========== */
+#define HYBRID_PLL_BW_HZ      15.0f   // PLL 带宽 (Hz)，按二阶系统 ζ=1 设计
+#define HYBRID_COMP_BW_HZ     5.0f    // 电流-电压模型反馈补偿环带宽 (Hz)
+#define HYBRID_SMO_KSLIDE     10.0f   // SMO 滑模增益 (V)，决定最大修正电压幅值
+#define HYBRID_SMO_BOUNDARY   0.002f  // SMO 边界层厚度 (Wb)，≈27% of ψf
 
 typedef struct {
     /* ---- 电机参数 ---- */

@@ -3,6 +3,7 @@
  * @author  nono <nono_1007@foxmail.com>
  * @brief   电压模型磁链观测器: 死区补偿 + 磁链积分 + PLL 锁相环
  */
+#include <string.h>
 #include "flux.h"
 
 FOC_OBSERVER_DEF Foc_observer;
@@ -20,6 +21,9 @@ static uint8_t speed_calc_cnt = 0;
  */
 void Flux_Observer_Init(void)
 {
+    /* 全结构体清零，避免逐字段赋 0 */
+    memset(&Foc_observer, 0, sizeof(Foc_observer));
+
     /* ---- 电机参数 ---- */
     Foc_observer.Rs   = MOTOR_RS;
     Foc_observer.Ls   = MOTOR_LS;
@@ -37,58 +41,37 @@ void Flux_Observer_Init(void)
 #if OBSERVER_TYPE == OBS_HYBRID_ACTIVE_FLUX
     /* 混合观测器: 按二阶系统带宽设计 (ζ=1, 临界阻尼) */
     {
-        float w_pll = 2.0f * PI * 15.0f;                            // PLL 带宽 15Hz
-        Foc_observer.PLL_BW_Hz = 15.0f;
-        Foc_observer.PLL_kp = 2.0f * w_pll;                         // Kp = 2·ωn
-        Foc_observer.PLL_ki = w_pll * w_pll * Foc_observer.Ctrl_ts; // Ki = ωn²·Ts
+        float w_pll = 2.0f * PI * HYBRID_PLL_BW_HZ;
+        Foc_observer.PLL_BW_Hz = HYBRID_PLL_BW_HZ;
+        Foc_observer.PLL_kp = 2.0f * w_pll;
+        Foc_observer.PLL_ki = w_pll * w_pll * Foc_observer.Ctrl_ts;
     }
 #else
     /* 电压型观测器: 保持原有调参值 */
-    Foc_observer.PLL_BW_Hz = 0.0f;    // 未使用
     Foc_observer.PLL_kp = 20.0f;
     Foc_observer.PLL_ki = 10.0f;
 #endif
-    Foc_observer.PLL_Err = 0.0f;
-    Foc_observer.PLL_Interg = 0.0f;
-    Foc_observer.PLL_Ui = 0.0f;
 
-    Foc_observer.Err = 0.0f;
-    Foc_observer.Theta = 0.0f;
-    Foc_observer.speed_hz = 0.0f;
-
-    /* PLL 增益恢复机制 */
+    /* PLL 增益恢复机制: 记录目标值供 ramp 恢复 */
     Foc_observer.PLL_kp_target = Foc_observer.PLL_kp;
     Foc_observer.PLL_ki_target = Foc_observer.PLL_ki;
-    Foc_observer.pll_ramp_active = 0;
 
     /* ---- Hybrid Active Flux 反馈补偿 PI ---- */
     {
-        float w0 = 2.0f * PI * 5.0f;   // 补偿环带宽 5Hz（从小调起，过大易震荡）
-        Foc_observer.Comp_Kp = 2.0f * w0;                     // Kp = 2·ω0
-        Foc_observer.Comp_Ki = w0 * w0 * Foc_observer.Ctrl_ts; // Ki = ω0²·Ts
+        float w0 = 2.0f * PI * HYBRID_COMP_BW_HZ;
+        Foc_observer.Comp_Kp = 2.0f * w0;
+        Foc_observer.Comp_Ki = w0 * w0 * Foc_observer.Ctrl_ts;
     }
-    Foc_observer.Comp_Interg[0] = 0.0f;
-    Foc_observer.Comp_Interg[1] = 0.0f;
-    Foc_observer.Comp_Mode = 0;        // 默认 PI 反馈律
 
     /* SMO 参数（备用） */
-    Foc_observer.SMO_Kslide   = 0.05f;
-    Foc_observer.SMO_Boundary = 0.2f;
+    Foc_observer.SMO_Kslide   = HYBRID_SMO_KSLIDE;
+    Foc_observer.SMO_Boundary = HYBRID_SMO_BOUNDARY;
 
-    /* ---- 磁链中间变量清零 ---- */
-    Foc_observer.ActiveFlux_I = 0.0f;
-    Foc_observer.Flux_Active_I[0] = 0.0f;
-    Foc_observer.Flux_Active_I[1] = 0.0f;
-    Foc_observer.Flux_Active_V[0] = 0.0f;
-    Foc_observer.Flux_Active_V[1] = 0.0f;
+    /* ---- 全局磁链变量清零 ---- */
+    memset(Flux_in_wb,  0, sizeof(Flux_in_wb));
+    memset(FluxR_in_wb, 0, sizeof(FluxR_in_wb));
 
-    Flux_in_wb[0] = 0.0f;
-    Flux_in_wb[1] = 0.0f;
-
-    FluxR_in_wb[0] = 0.0f;
-    FluxR_in_wb[1] = 0.0f;
-
-    /* 转速变量清零 */
+    /* ---- 转速变量清零 ---- */
     speed_acc = 0.0f;
     speed_now = 0.0f;
     speed_calc_cnt = 0;
