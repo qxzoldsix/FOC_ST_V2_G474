@@ -20,18 +20,38 @@ static uint8_t speed_calc_cnt = 0;
  */
 void Flux_Observer_Init(void)
 {
+    /* ---- 电机参数 ---- */
     Foc_observer.Rs   = MOTOR_RS;
     Foc_observer.Ls   = MOTOR_LS;
+    Foc_observer.Ld   = MOTOR_LD;
+    Foc_observer.Lq   = MOTOR_LQ;
     Foc_observer.Flux = MOTOR_FLUX;
 
+    /* ---- 电压型观测器补偿增益 ---- */
+    Foc_observer.Gain = 5000.0f;       // 磁链幅值补偿增益（过大→震荡啸叫，过小→收敛慢）
+
+    /* 控制周期必须先设，后续 PI 参数计算依赖它 */
+    Foc_observer.Ctrl_ts = 5e-5f;      // 控制周期 20kHz (Ts = 1/20000 = 50µs)
+
+    /* ---- PLL 参数 ---- */
+#if OBSERVER_TYPE == OBS_HYBRID_ACTIVE_FLUX
+    /* 混合观测器: 按二阶系统带宽设计 (ζ=1, 临界阻尼) */
+    {
+        float w_pll = 2.0f * PI * 15.0f;                            // PLL 带宽 15Hz
+        Foc_observer.PLL_BW_Hz = 15.0f;
+        Foc_observer.PLL_kp = 2.0f * w_pll;                         // Kp = 2·ωn
+        Foc_observer.PLL_ki = w_pll * w_pll * Foc_observer.Ctrl_ts; // Ki = ωn²·Ts
+    }
+#else
+    /* 电压型观测器: 保持原有调参值 */
+    Foc_observer.PLL_BW_Hz = 0.0f;    // 未使用
     Foc_observer.PLL_kp = 20.0f;
     Foc_observer.PLL_ki = 10.0f;
+#endif
     Foc_observer.PLL_Err = 0.0f;
     Foc_observer.PLL_Interg = 0.0f;
     Foc_observer.PLL_Ui = 0.0f;
 
-    Foc_observer.Ctrl_ts = 5e-5f;       // 控制周期 20kHz (Ts = 1/20000 = 50µs)
-    Foc_observer.Gain = 5000.0f;        // 磁链幅值补偿增益（过大→震荡啸叫，过小→收敛慢）
     Foc_observer.Err = 0.0f;
     Foc_observer.Theta = 0.0f;
     Foc_observer.speed_hz = 0.0f;
@@ -41,7 +61,27 @@ void Flux_Observer_Init(void)
     Foc_observer.PLL_ki_target = Foc_observer.PLL_ki;
     Foc_observer.pll_ramp_active = 0;
 
-    /* 磁链积分初值清零 */
+    /* ---- Hybrid Active Flux 反馈补偿 PI ---- */
+    {
+        float w0 = 2.0f * PI * 5.0f;   // 补偿环带宽 5Hz（从小调起，过大易震荡）
+        Foc_observer.Comp_Kp = 2.0f * w0;                     // Kp = 2·ω0
+        Foc_observer.Comp_Ki = w0 * w0 * Foc_observer.Ctrl_ts; // Ki = ω0²·Ts
+    }
+    Foc_observer.Comp_Interg[0] = 0.0f;
+    Foc_observer.Comp_Interg[1] = 0.0f;
+    Foc_observer.Comp_Mode = 0;        // 默认 PI 反馈律
+
+    /* SMO 参数（备用） */
+    Foc_observer.SMO_Kslide   = 0.05f;
+    Foc_observer.SMO_Boundary = 0.2f;
+
+    /* ---- 磁链中间变量清零 ---- */
+    Foc_observer.ActiveFlux_I = 0.0f;
+    Foc_observer.Flux_Active_I[0] = 0.0f;
+    Foc_observer.Flux_Active_I[1] = 0.0f;
+    Foc_observer.Flux_Active_V[0] = 0.0f;
+    Foc_observer.Flux_Active_V[1] = 0.0f;
+
     Flux_in_wb[0] = 0.0f;
     Flux_in_wb[1] = 0.0f;
 
@@ -211,9 +251,174 @@ void Observer_Run_EKF(void)
     // TODO: 扩展卡尔曼滤波观测器
 }
 
-void Observer_Run_NonlinearFlux(void)
+/**
+ * Hybrid Active Flux 观测器（电流-电压互补型）
+ *
+ * 参考: TPE2023A "Robust Encoderless Control for PMSM Drives:
+ *       A Revised Hybrid Active Flux-Based Technique"
+ *
+ * 核心思想:
+ *   电流模型 (高频/低速准确) + 电压模型 (中高速准确) → 全速域互补
+ *
+ *   ψ_active = ψf + (Ld - Lq)·Id          ← 有效磁链 (统一凸极/非凸极)
+ *   电流模型: ψ_I = ψ_active × [cosθ̂, sinθ̂]
+ *   电压模型: ψ_V = ∫(V - Rs·I + U_comp)dt - Lq·I
+ *   误差反馈: U_comp = PI(ψ_I - ψ_V)     ← 矢量误差修正
+ *   PLL: ε = -ψ_Vα·sinθ̂ + ψ_Vβ·cosθ̂ → θ̂, ω̂
+ *
+ * 算法链路:
+ *   1. 死区补偿 → 修正输入电压
+ *   2. 电流模型: ψ_active = ψf + (Ld-Lq)·Id → 投影到 αβ
+ *   3. 电压模型提取: ψ_V = ψs - Lq·I (上一周期累积的磁链)
+ *   4. 矢量误差: Δψ = ψ_I - ψ_V
+ *   5. 反馈 PI (αβ 独立) → U_comp
+ *   6. 磁链积分: ψs += (V* - Rs·I + U_comp)·Ts
+ *   7. PLL 锁相 → θ̂, ω̂
+ *   8. 电频率计算 + PLL 增益 ramp
+ */
+void Observer_Run_HybirdFlux(void)
 {
-    // TODO: 非线性磁链观测器
+    float Ualpha_cmd, Ubeta_cmd;   // 死区补偿后电压
+    float sin_theta, cos_theta;
+    float pll_ui_lim;
+    float error_alpha, error_beta; // 电流-电压模型磁链误差
+
+    /* ---- Step 1: 死区补偿 ---- */
+    Deadtime_Comp_ab(&Ualpha_cmd, &Ubeta_cmd);
+
+    /* ---- Step 2: 电流模型 — 有效磁链计算 + αβ 投影 ---- */
+    /* ψ_active = ψf + (Ld - Lq) × Id */
+    Foc_observer.ActiveFlux_I = Foc_observer.Flux
+        + (Foc_observer.Ld - Foc_observer.Lq) * PARK_PCurr.Ds;
+
+    /* 用上一周期 PLL 输出的 θ̂ 做投影: ψ_I_αβ = ψ_active × [cosθ̂, sinθ̂] */
+    sin_theta = sinf(Foc_observer.Theta);
+    cos_theta = cosf(Foc_observer.Theta);
+    Foc_observer.Flux_Active_I[0] = Foc_observer.ActiveFlux_I * cos_theta;
+    Foc_observer.Flux_Active_I[1] = Foc_observer.ActiveFlux_I * sin_theta;
+
+    /* ---- Step 3: 电压模型 — 从定子磁链提取有效磁链 ---- */
+    /* ψ_V = ψs - Lq × I (上一周期累积的 ψs) */
+    Foc_observer.Flux_Active_V[0] = Flux_in_wb[0] - Foc_observer.Lq * CLARKE_PCurr.Alpha;
+    Foc_observer.Flux_Active_V[1] = Flux_in_wb[1] - Foc_observer.Lq * CLARKE_PCurr.Beta;
+
+    /* 同步写入全局变量，供 Vofa/LCD 监控 */
+    FluxR_in_wb[0] = Foc_observer.Flux_Active_V[0];
+    FluxR_in_wb[1] = Foc_observer.Flux_Active_V[1];
+
+    /* ---- Step 4: 矢量误差 = 电流模型 - 电压模型 ---- */
+    error_alpha = Foc_observer.Flux_Active_I[0] - Foc_observer.Flux_Active_V[0];
+    error_beta  = Foc_observer.Flux_Active_I[1] - Foc_observer.Flux_Active_V[1];
+
+    /* ---- Step 5: 反馈律 — PI 或 SMO ---- */
+    if (Foc_observer.Comp_Mode == 0)
+    {
+        /* PI 反馈律: U_comp = Kp × Δψ + Ki × ∫Δψ dt */
+        /* α、β 轴独立 PI，参数相同 */
+        float u_comp_alpha, u_comp_beta;
+
+        Foc_observer.Comp_Interg[0] += error_alpha * Foc_observer.Comp_Ki;
+        Foc_observer.Comp_Interg[1] += error_beta  * Foc_observer.Comp_Ki;
+
+        u_comp_alpha = error_alpha * Foc_observer.Comp_Kp + Foc_observer.Comp_Interg[0];
+        u_comp_beta  = error_beta  * Foc_observer.Comp_Kp + Foc_observer.Comp_Interg[1];
+
+        /* ---- Step 6: 定子磁链积分 ---- */
+        /* dψs/dt = V* - Rs·I + U_comp */
+        Flux_in_wb[0] += (Ualpha_cmd
+                          - Foc_observer.Rs * CLARKE_PCurr.Alpha
+                          + u_comp_alpha) * Foc_observer.Ctrl_ts;
+        Flux_in_wb[1] += (Ubeta_cmd
+                          - Foc_observer.Rs * CLARKE_PCurr.Beta
+                          + u_comp_beta)  * Foc_observer.Ctrl_ts;
+    }
+    else
+    {
+        /* SMO 反馈律: 带边界层的饱和函数 */
+        float u_comp_alpha, u_comp_beta;
+
+        /* α 轴 SMO */
+        if (fabsf(error_alpha) < Foc_observer.SMO_Boundary)
+        {
+            u_comp_alpha = Foc_observer.SMO_Kslide * error_alpha
+                         / Foc_observer.SMO_Boundary;
+        }
+        else
+        {
+            u_comp_alpha = (error_alpha > 0.0f) ? Foc_observer.SMO_Kslide
+                                                : -Foc_observer.SMO_Kslide;
+        }
+
+        /* β 轴 SMO */
+        if (fabsf(error_beta) < Foc_observer.SMO_Boundary)
+        {
+            u_comp_beta = Foc_observer.SMO_Kslide * error_beta
+                        / Foc_observer.SMO_Boundary;
+        }
+        else
+        {
+            u_comp_beta = (error_beta > 0.0f) ? Foc_observer.SMO_Kslide
+                                              : -Foc_observer.SMO_Kslide;
+        }
+
+        /* 磁链积分 */
+        Flux_in_wb[0] += (Ualpha_cmd
+                          - Foc_observer.Rs * CLARKE_PCurr.Alpha
+                          + u_comp_alpha) * Foc_observer.Ctrl_ts;
+        Flux_in_wb[1] += (Ubeta_cmd
+                          - Foc_observer.Rs * CLARKE_PCurr.Beta
+                          + u_comp_beta)  * Foc_observer.Ctrl_ts;
+    }
+
+    /* ---- Step 7: PLL 锁相环（带积分抗饱和）---- */
+    /* PLL 误差: ε = -ψ_Vα·sinθ̂ + ψ_Vβ·cosθ̂ = |ψ_V|·sin(θ - θ̂) */
+    Foc_observer.PLL_Err = -Foc_observer.Flux_Active_V[0] * sin_theta
+                           + Foc_observer.Flux_Active_V[1] * cos_theta;
+
+    /* PI 控制器 */
+    Foc_observer.PLL_Interg += Foc_observer.PLL_Err * Foc_observer.PLL_ki;
+
+    /* 抗饱和: 限幅 ±(ωe_max × Ts) */
+    pll_ui_lim = 2.0f * PI * 500.0f * Foc_observer.Ctrl_ts;
+    Foc_observer.PLL_Interg = Limit_Sat(Foc_observer.PLL_Interg, pll_ui_lim, -pll_ui_lim);
+
+    Foc_observer.PLL_Ui = Foc_observer.PLL_Err * Foc_observer.PLL_kp
+                         + Foc_observer.PLL_Interg;
+    Foc_observer.PLL_Ui = Limit_Sat(Foc_observer.PLL_Ui, pll_ui_lim, -pll_ui_lim);
+
+    /* 角度积分 */
+    Foc_observer.Theta += Foc_observer.PLL_Ui;
+
+    /* 角度归一化 [0, 2π) */
+    while (Foc_observer.Theta >= 2.0f * PI) Foc_observer.Theta -= 2.0f * PI;
+    while (Foc_observer.Theta < 0.0f)       Foc_observer.Theta += 2.0f * PI;
+
+    /* ---- Step 8: 电频率计算与低通滤波 ---- */
+    speed_acc += Foc_observer.PLL_Ui;
+    speed_calc_cnt++;
+
+    if (speed_calc_cnt >= 8)
+    {
+        speed_now = speed_acc / (8.0f * Foc_observer.Ctrl_ts * 2.0f * PI);
+        Foc_observer.speed_hz = Foc_observer.speed_hz * 0.95f + speed_now * 0.05f;
+        speed_acc = 0.0f;
+        speed_calc_cnt = 0;
+    }
+
+    /* ---- PLL 增益恢复 ramp ---- */
+    if (Foc_observer.pll_ramp_active)
+    {
+        Foc_observer.PLL_kp += (Foc_observer.PLL_kp_target - Foc_observer.PLL_kp) * 0.02f;
+        Foc_observer.PLL_ki += (Foc_observer.PLL_ki_target - Foc_observer.PLL_ki) * 0.02f;
+
+        if (fabsf(Foc_observer.PLL_kp - Foc_observer.PLL_kp_target) < 0.05f &&
+            fabsf(Foc_observer.PLL_ki - Foc_observer.PLL_ki_target) < 0.05f)
+        {
+            Foc_observer.PLL_kp = Foc_observer.PLL_kp_target;
+            Foc_observer.PLL_ki = Foc_observer.PLL_ki_target;
+            Foc_observer.pll_ramp_active = 0;
+        }
+    }
 }
 
 void Observer_Run_Luenberger(void)
@@ -261,12 +466,25 @@ void IPD_HFI_Injection(void)
 
 /**
  * 获取转子电角度
- * 调用磁链观测器 → 将 Theta(rad) 转换为 IQAngle(0~4095)
+ * 根据 OBSERVER_TYPE 选择观测器 → 将 Theta(rad) 转换为 IQAngle(0~4095)
  * 由 FOC 控制循环在 UVW_Axis_DQ 之前调用
  */
 void Angel_Get(void)
 {
+    /* 根据编译期观测器类型分派 */
+#if OBSERVER_TYPE == OBS_FLUX_VOLTAGE
     Observer_Run();
+#elif OBSERVER_TYPE == OBS_HYBRID_ACTIVE_FLUX
+    Observer_Run_HybirdFlux();
+#elif OBSERVER_TYPE == OBS_EKF
+    Observer_Run_EKF();
+#elif OBSERVER_TYPE == OBS_LUENBERGER
+    Observer_Run_Luenberger();
+#elif OBSERVER_TYPE == OBS_SMO
+    Observer_Run_SMO();
+#else
+    Observer_Run();  // fallback
+#endif
 
     // rad → 定点角度 (4096 = 2π)
     motor.IQAngle = (int16_t)(651.8986f * Foc_observer.Theta);
