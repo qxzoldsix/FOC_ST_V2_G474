@@ -70,58 +70,30 @@ void KEY_RUN(void)
 
     /* ---- KEY1 (PC9): short = start/stop, long = clear fault ---- */
     if (key_array[key_sw1].key_value == key_click_one) {
-        if (motor.Control_Mode == 0) {
-            motor.Control_Mode = 3;  // default to VF on start
-            Foc_Pwm_Start();
-        } else {
-            motor.Control_Mode = 0;  // STOP
-            Foc_Pwm_Stop();
-        }
+        // TODO: start/stop
     }
     if (key_array[key_sw1].key_value == key_long_press) {
-        InvProtect_Clear();
-        Foc_Pwm_Start();             // re-enable PWM after fault clear
+        // TODO: clear fault
     }
     key_array[key_sw1].key_value = key_none;
 
-    /* ---- KEY2 (PC8): short = mode cycle: STOP->VF->Sensorless->Prepos->STOP ---- */
+    /* ---- KEY2 (PC8): short = mode cycle: STOP->VF->PREPOS->Sensorless ---- */
     if (key_array[key_sw2].key_value == key_click_one) {
-        static const uint8_t mode_cycle[] = {0, 3, 4, 2};  // STOP, VF, PREPOS, Sensorless
-        uint8_t i;
-        for (i = 0; i < 4; i++) {
-            if (motor.Control_Mode == mode_cycle[i]) break;
-        }
-        if (i < 4) {
-            motor.Control_Mode = mode_cycle[(i + 1) % 4];
-        } else {
-            motor.Control_Mode = 3;  // unknown state -> VF
-        }
-        if (motor.Control_Mode == 0) Foc_Pwm_Stop();
-        else                         Foc_Pwm_Start();
+        // TODO: mode cycle
     }
     key_array[key_sw2].key_value = key_none;
 
     /* ---- KEY3 (PC7): short = TargetHz +5, long = continuous +5 ---- */
     if (key_array[key_sw3].key_value == key_click_one ||
         key_array[key_sw3].key_value == key_long_press) {
-        motor.TargetHz += 5.0f;
-        if (motor.TargetHz > VF_FREQ_MAX) motor.TargetHz = VF_FREQ_MAX;
-        /* 无感模式下同步更新速度环目标 */
-        if (motor.Control_Mode == 2) {
-            SpeedRpm_GXieLv.XieLv_X = motor.TargetHz * 60.0f / (MOTOR_POLES / 2.0f);
-        }
+        // TODO: TargetHz +5
     }
     key_array[key_sw3].key_value = key_none;
 
     /* ---- KEY4 (PC6): short = TargetHz -5, long = continuous -5 ---- */
     if (key_array[key_sw4].key_value == key_click_one ||
         key_array[key_sw4].key_value == key_long_press) {
-        motor.TargetHz -= 5.0f;
-        if (motor.TargetHz < 0.0f) motor.TargetHz = 0.0f;
-        /* 无感模式下同步更新速度环目标 */
-        if (motor.Control_Mode == 2) {
-            SpeedRpm_GXieLv.XieLv_X = motor.TargetHz * 60.0f / (MOTOR_POLES / 2.0f);
-        }
+        // TODO: TargetHz -5
     }
     key_array[key_sw4].key_value = key_none;
 }

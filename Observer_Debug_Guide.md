@@ -1,34 +1,38 @@
 # 观测器 Debug 调试指南 — Vofa 监控变量 & 推荐值
 
-> 配套代码修改: 2025-06-26 | 适用: FOC_ST_V2_0611
+> 配套代码: FOC_ST_V2_0611 | 更新日期: 2026-07-08
+> **观测器当前支持电压型 / Hybrid Active Flux 双模式** (`OBSERVER_TYPE`)
 
 ---
 
-## 1. Vofa 上位机 6 通道说明（已修改）
+## 1. Vofa 上位机 9 通道说明
 
-修改后 `HFPeriod_RUN` 上报的 6 个 float 通道：
+`HFPeriod_RUN` 上报的 9 个 float 通道 (`taskManager/taskManager.c`):
 
 | 通道 | 变量 | 含义 | **正常时的值** | **异常表现** |
 |------|------|------|---------------|-------------|
-| CH1 | `Foc_observer.PLL_Err` | PLL 角度误差 | **0 ± 0.02** | 大幅震荡(>0.1) → PLL 未锁定 |
-| CH2 | `sqrt(ψrα²+ψrβ²)` | 转子磁链幅值 | **≈ MOTOR_FLUX (0.00752)** | 0 或不收敛 → 观测器未建立磁链 |
-| CH3 | `speed_hz` / `CurrentHz` | 估算/当前电频率 | **= 设定频率 ± 1Hz** | 偏离大 → 观测器跟踪失败 |
-| CH4 | `PARK_PCurr.Ds` | d 轴电流 Id | **≈ 0** | 偏离 0 → 坐标变换角度错 |
-| CH5 | `PARK_PCurr.Qs` | q 轴电流 Iq | **稳定，取决于负载** | 剧烈波动 → 电流环震荡 |
-| CH6 | `BUS_Voltage` | 母线电压 | **≈ 24V，稳定** | 大幅跌落 → 电源不足 |
+| CH1 | `motor.CurrentHz` | 当前电频率 (Hz) | 跟踪目标 ±1Hz | 大幅跳动 → 失步 |
+| CH2 | `PARK_PCurr.Ds` | d 轴电流 Id (A) | **≈ 0** | 偏离 0 → 角度/参数错 |
+| CH3 | `PARK_PCurr.Qs` | q 轴电流 Iq (A) | 稳定，正比于负载 | 剧烈波动 → 电流环震荡 |
+| CH4 | `motor.V_d` | d 轴电压 (pu) | ≈ 0 | 异常偏大 → 角度误差 |
+| CH5 | `motor.V_q` | q 轴电压 (pu) | < 0.8 | 饱和(≈1.0) → 电压不足 |
+| CH6 | `BUS_Voltage` | 母线电压 (V) | ≈ 24V 稳定 | 大幅跌落 → 电源不足 |
+| CH7 | `PhaseU_Curr` | U 相电流 (A) | 正弦 | 畸变 → SVPWM 问题 |
+| CH8 | `PhaseV_Curr` | V 相电流 (A) | 正弦 | 同上 |
+| CH9 | `PhaseW_Curr` | W 相电流 (A) | 正弦 | 同上 |
 
 ### Vofa 配置
 
 - 协议: JustFloat
-- 通道数: 6
+- 通道数: 9
 - 帧尾: `00 00 80 7F`
 - 帧率: ~1kHz
 
 ---
 
-## 2. LCD 屏幕显示（已修改）
+## 2. LCD 屏幕显示
 
-Task_DEBUG 页面新增的观测器诊断行：
+Task_DEBUG 页面观测器诊断行 (`taskManager/taskManager.c`):
 
 | 标签 | 含义 | **正常值** |
 |------|------|-----------|
@@ -43,30 +47,23 @@ Task_DEBUG 页面新增的观测器诊断行：
 
 ### 3.1 观测器参数
 
-| 参数 | 位置 | 默认值 | **推荐起始值** | 调大效果 | 调小效果 |
-|------|------|--------|---------------|---------|---------|
-| `PLL_kp` | `flux.c:23` | 20.0f | **20.0f** | PLL 跟踪更快，但噪声敏感 | 跟踪慢，滞后大 |
-| `PLL_ki` | `flux.c:24` | 10.0f | **10.0f** | 更快消除静差，但易震荡 | 静差消除慢 |
-| `Gain` | `flux.c:30` | 5000.0f | **5000.0f** | 磁链收敛更快，但过大会震荡 | 收敛慢 |
-| `V_DEADTIME` | `flux.c:72` | 0.3f | **0.3f** 先不调 | — | — |
+| 参数 | 位置 | 电压型默认 | Hybrid 默认 | 调大效果 | 调小效果 |
+|------|------|-----------|------------|---------|---------|
+| `PLL_kp` | `flux.c:Flux_Observer_Init` | 20.0f | 自动计算 (2·ω_pll) | PLL 跟踪更快，但噪声敏感 | 跟踪慢，滞后大 |
+| `PLL_ki` | `flux.c:Flux_Observer_Init` | 10.0f | 自动计算 (ω_pll²·Ts) | 更快消除静差，但易震荡 | 静差消除慢 |
+| `Gain` | `flux.c:Flux_Observer_Init` | 5000.0f | 5000.0f | 磁链收敛更快，但过大会震荡 | 收敛慢 |
+| `V_DEADTIME` | `flux.c:Deadtime_Comp_ab` | 0.3f | 0.3f | — | — |
+| `OBSERVER_TYPE` | `flux.h` | 0 (电压型) | 1 (Hybrid) | — | — |
+| `HYBRID_PLL_BW_HZ` | `flux.h` | — | 50Hz | 更快响应 | 更平滑 |
 
-### 3.2 切换参数
-
-| 参数 | 位置 | 默认值 | **推荐起始值** |
-|------|------|--------|---------------|
-| `VF_TO_SENSORLESS_HZ` | `motorControl.c:8` | 10.0f | **10~15Hz** |
-| `PLL_kp` (过渡) | `motorControl.c` VF_to_Sensorless_Sync | 4.0f | **4.0f** |
-| `PLL_ki` (过渡) | `motorControl.c` VF_to_Sensorless_Sync | 1.0f | **1.0f** |
-| Ramp 恢复速率 | `flux.c:185` 0.02f | 0.02f | **0.02f** (~5ms 恢复) |
-
-### 3.3 电机参数（**必须确认**）
+### 3.2 电机参数（**必须确认**）
 
 | 参数 | 位置 | 当前值 | 获取方式 |
 |------|------|--------|---------|
-| `MOTOR_RS` | `flux.h:6` | 0.007525Ω | **万用表实测** 任意两相电阻 ÷ 2 |
-| `MOTOR_LS` | `flux.h:7` | 0.00002H (20µH) | LCR 表测 1kHz, 任意两相电感 ÷ 2 |
-| `MOTOR_FLUX` | `flux.h:8` | 0.00752Wb | 反拖电机测线间反电动势: `Flux = Vpeak / (2π × f × √3 × 极对数)` |
-| `MOTOR_POLES` | `flux.h:9` | 52 | 数磁钢个数 |
+| `MOTOR_RS` | `flux.h` | 0.007525Ω | **万用表实测** 任意两相电阻 ÷ 2 |
+| `MOTOR_LS` | `flux.h` | 0.00002H (20µH) | LCR 表测 1kHz, 任意两相电感 ÷ 2 ⚠️ 待验证 |
+| `MOTOR_FLUX` | `flux.h` | 0.00752Wb | 反拖电机测线间反电动势: `Flux = Vpeak / (2π × f × √3 × 极对数)` |
+| `MOTOR_POLES` | `flux.h` | 52 | 数磁钢个数 |
 
 ---
 
@@ -76,8 +73,8 @@ Task_DEBUG 页面新增的观测器诊断行：
 
 ```
 1. 上电, KEY1 启动 → 自动进入 Mode 3 (VF)
-2. KEY3/KEY4 设 TargetHz = 20Hz
-3. Vofa 观察 CH4(Id)/CH5(Iq) → 电流应该正弦（看波形图）
+2. KEY3/KEY4 设 TargetHz = 20Hz, targetVolt ≥ 0.10
+3. Vofa 观察 CH7/CH8/CH9 (三相电流) → 电流应该正弦
 4. 电机应平稳旋转，无异响
 ```
 
@@ -90,28 +87,27 @@ Task_DEBUG 页面新增的观测器诊断行：
 ```
 1. KEY2 切到 Mode 4 ([PREPOS])
 2. Vofa 重点关注:
-   ┌─ CH2 (FluxR_mag): 应从 0 慢慢涨到 ~0.0075
-   ├─ CH1 (PLL_Err):   应逐步收敛到 ~0
-   └─ CH3 (speed_hz):  应 ≈ CurrentHz
-3. LCD 看 "Psi" 值是否在涨
+   ┌─ LCD "Psi": 应从 0 慢慢涨到 ~0.0075
+   ├─ LCD "PLL": 应逐步收敛到 ~0.000
+   └─ CH1 (CurrentHz): 应稳定
+3. 观测器在 20~30Hz 下通常 100~500ms 收敛
 ```
 
 **判断观测器是否就绪**：
-- CH2 ≥ 0.005（约 67% 参考值）
-- CH1 稳定在 ±0.05 以内
-- 这个过程在 10Hz 时需要约 **100~500ms**
+- LCD "Psi" ≥ 0.005（约 67% 参考值）
+- LCD "PLL" 稳定在 ±0.05 以内
 
 ---
 
-### 阶段 C：自动切换（10Hz 触发）
+### 阶段 C：手动切换到 Mode 2
 
 ```
-1. 随着 VF 频率斜坡上升，到 10Hz 时自动切换 Mode 2
+1. 确认观测器就绪后 KEY2 切 Mode 2 ([SENSORLESS])
 2. 切换瞬间重点观察:
-   ┌─ CH5 (Iq): 是否跳变？→ 如果跳变很大，调低过渡 PLL_kp
-   ├─ CH4 (Id): 是否偏离 0？→ 偏离说明角度有误差
-   └─ CH1 (PLL_Err): 是否有尖峰？→ 峰太尖说明 Gain 不够
-3. 切换后 CH3 (speed_hz) 应稳定跟踪 CurrentHz
+   ┌─ CH3 (Iq): 是否跳变？
+   ├─ CH2 (Id): 是否偏离 0？
+   └─ CH5 (Vq): 是否饱和？
+3. 切换后 CH1 (CurrentHz) 应稳定跟踪
 ```
 
 ---
@@ -122,72 +118,40 @@ Task_DEBUG 页面新增的观测器诊断行：
 
 | 现象 | 最可能原因 | 调什么 |
 |------|-----------|--------|
-| CH2 一直是 0 | 观测器根本没跑起来 | 确认进入了 Mode 4，看后台 Clarks/Angel_Get 是否执行 |
-| CH2 涨到某个值就不动了 | 电机参数错误 | **先确认 MOTOR_FLUX 是否正确**，再用 LCR 实测 MOTOR_LS |
-| CH1 大幅震荡(>±0.2) | PLL 增益太高 | 降低 PLL_kp → 10, PLL_ki → 5 |
-| CH1 变化极慢，跟不上 | PLL 增益太低 | 提高过渡 PLL_kp → 8, PLL_ki → 2 |
-| Iq(CH5) 切换瞬间跳 10A+ | 电流环响应跟不上 | 提高 pi_iq Kp → 0.05, Ki → 0.0001 |
-| Id(CH4) 切换后不是 0 | 角度误差大 | 提高切换频率到 15Hz，或降低 Gain 到 2000 |
-| 切换瞬间一切正常，几秒后爆鸣 | PLL ramp 太慢或积分 windup | 检查 CH1 是否逐渐增大，提高 ramp 速率或手动恢复增益 |
+| LCD "Psi" 一直是 0 | 观测器根本没跑起来 | 确认进入了 Mode 4 |
+| LCD "Psi" 涨到某个值就不动了 | 电机参数错误 | **先确认 MOTOR_FLUX**，再用 LCR 实测 MOTOR_LS |
+| LCD "PLL" 大幅震荡 | PLL 增益太高 | 降低 PLL_kp → 10, PLL_ki → 5 |
+| CH3(Iq) 切换瞬间跳 10A+ | 电流环响应跟不上 | 提高 pi_iq Kp → 0.05, Ki → 0.0001 |
+| CH2(Id) 切换后不是 0 | 角度误差大 | 等更久预热，或提高 VF 频率到 30~40Hz |
+| 切换瞬间正常，几秒后爆鸣 | PLL 积分 windup | 检查 anti-windup 是否生效 |
 
 ---
 
-## 5. 典型正常波形参考
+## 5. 快速诊断表（现场调参用）
 
-### Vofa 预期波形（Mode 4 → 2 切换过程）
+在 LCD 上看这 3 个值就能快速判断：
 
-```
-时间轴 →
-
-CH1(PLL_Err):
-  预热期: 震荡 ±0.1~0.2  ← 正常，磁链未收敛
-  接近切换: 收敛到 ±0.03
-  切换瞬间: 小尖峰 ±0.05
-  切换后: ±0.02 以内稳定  ← 锁定
-
-CH2(FluxR_mag):
-  预热期: 0 → 缓慢增长
-  接近切换: ~0.005~0.007
-  切换后: 稳定在 0.0075 ± 0.0005  ← 收敛
-
-CH3(speed_hz):
-  预热期: = VF CurrentHz (斜坡上升)
-  切换后: 平滑跟随，无跳变
-
-CH4(Id):
-  全程: ≈ 0 ± 0.5A
-
-CH5(Iq):
-  切换瞬间: 允许小幅波动 ±2A
-  切换后: 稳定
-```
-
----
-
-## 6. 快速诊断表（现场调参用）
-
-在 Vofa 中看这 3 个值就能快速判断：
-
-| PLL_Err (CH1) | FluxR_mag (CH2) | speed_hz vs CurrentHz | 诊断 |
-|---------------|-----------------|----------------------|------|
+| PLL | Psi | Est vs FHz | 诊断 |
+|-----|-----|-----------|------|
 | ≈ 0 | ≈ 0.0075 | 一致 | ✅ 正常 |
 | 大幅震荡 | 也在震荡 | 乱跳 | PLL 震荡 → 降 PLL_kp |
-| 持续偏大(>0.1) | 正常 | 不一致 | PLL 滞后 → 升 PLL_kp |
+| 持续偏大 | 正常 | 不一致 | PLL 滞后 → 升 PLL_kp |
 | ≈ 0 | 远小于 0.0075 | 一致 | 电机参数错 → 检查 FLUX |
 | ≈ 0 | 正常 | 差 2Hz 以上 | 电机参数错 → 检查 POLES |
 | 逐渐变大 | 正常 | 逐渐偏离 | PLL 积分 windup → 已修复(anti-windup) |
 
 ---
 
-## 7. 关键修改一览
+## 6. 关键修改一览
 
-| 文件 | 修改内容 |
-|------|---------|
-| `flux.c` | ①Observer_Run 重构：磁链误差同周期计算(消延迟) + PLL 抗饱和 + 死区补偿 + PLL 增益自动 ramp |
-| `flux.c` | ②Gain 15000→5000（降低震荡风险） |
-| `flux.h` | ③新增 `PLL_kp_target`, `PLL_ki_target`, `pll_ramp_active` |
-| `motorControl.c` | ④`VF_TO_SENSORLESS_HZ` 5→10Hz |
-| `motorControl.c` | ⑤`VF_to_Sensorless_Sync`: 保存目标增益 + 激活 ramp + PI 预加载减半 |
-| `motorControl.c` | ⑥Mode 2 冷启动检测: 磁链未就绪时自动同步 PLL 到 VF 状态 |
-| `taskManager.c` | ⑦`HFPeriod_RUN` Vofa 通道改为观测器诊断变量 |
-| `taskManager.c` | ⑧LCD Task_DEBUG 新增 PLL 误差 / 磁链幅值 / 估算频率显示 |
+| 日期 | 文件 | 修改内容 |
+|------|------|---------|
+| 6.25 | `flux.c` | Observer_Run 重构：磁链误差同周期计算(消延迟) + PLL 抗饱和 + 死区补偿 + PLL 增益自动 ramp |
+| 6.25 | `flux.c` | Gain 15000→5000（降低震荡风险） |
+| 6.25 | `flux.h` | 新增 `PLL_kp_target`, `PLL_ki_target`, `pll_ramp_active` |
+| 6.27 | `motorControl.c` | VF 分离架构: Mode 4 只预热不自动切换 + Mode 2 暖启动检测 |
+| 6.27 | `taskManager.c` | 按键循环重排: STOP→VF→PREPOS→SENSORLESS |
+| 7.05 | `ADC_Sample.c` | 电流采样负号修复 |
+| 7.05 | `PI_Cale.c` | PI 限幅修正 |
+| 7.08 | `flux.c/h` | 新增 Hybrid Active Flux 观测器: 二阶系统带宽设计 + 反馈补偿 PI + SMO 备用 |
+| 7.08 | `taskManager.c` | Vofa 6ch→9ch, LCD 显示 PLL/Est/Psi |

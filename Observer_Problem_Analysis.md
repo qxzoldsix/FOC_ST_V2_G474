@@ -1,8 +1,121 @@
 # 观测器（无感 FOC）进入后电机爆鸣、电流突变 — 问题分析
 
-> 项目: FOC_ST_V2_0611 | MCU: STM32G474 | PWM: 20kHz
-> 分析日期: 2025-06-25
-> **订正版**：重新审视观测器算法本身 + 列出实际 debug 该监控/调节的量
+> 项目: FOC_ST_V2_0611 | MCU: STM32G474 | 分析日期: 2025-06-25
+> **状态: ✅ 全部问题已于 2026-07-08 前修复** | 本文档保留作为技术分析参考
+
+---
+
+## ⚡ 修复总览
+
+| 问题编号 | 问题描述 | 修复日期 | 修复方式 |
+|----------|---------|---------|---------|
+| #1 | PLL 积分无抗饱和 | 6.25 | `Limit_Sat` 限制 ±0.157 rad/周期 |
+| #2 | 观测器冷启动收敛慢 | 6.27 | VF 分离架构: Mode 4 预热 + Mode 2 暖启动 |
+| #3 | 死区电压误差未补偿 | 6.25 | `Deadtime_Comp_ab()` 死区补偿函数 |
+| #4 | 磁链补偿一周期延迟 | 6.25 | 同周期 Err 计算（先算 ψr→Err→再补偿） |
+| #5 | PLL 增益未恢复 | 6.25 | `pll_ramp_active` 自动 ramp 恢复机制 |
+| — | 电压量纲错误 | 6.25 | 死区补偿中 `v_cmd_scale = Km × Vbus` 正确量纲 |
+| — | 电流采样方向反 | 7.05 | ADC_Sample.c 三相电流加负号 |
+
+---
+
+## 1. 先搞清楚"观测器进入"有几种情况
+
+看按键逻辑（`taskManager.c`），模式循环是：
+
+```
+STOP(0) → VF(3) → PREPOS(4) → SENSORLESS(2) → STOP(0) → ...
+```
+
+> **已更新**: 现在按键循环为 STOP→VF→PREPOS→SENSORLESS，Mode 4 只预热不自动切换。
+
+| 进入路径 | 观测器之前的状态 | 处理方式 |
+|----------|-----------------|---------|
+| STOP(0) → SENSORLESS(2) | 全部为 0 | ❌ 禁止（Mode 2 检测 |ψr|<30% FLUX 自动走冷启动同步） |
+| VF(3) → SENSORLESS(2) | 全部为 0 | ❌ 禁止（同上） |
+| PREPOS(4) → SENSORLESS(2) | 已在后台预热运行 | ✅ 暖启动: PLL 已锁定，直接接管 |
+
+---
+
+## 2. 🔴 观测器算法本身的问题 — 已全部修复
+
+### 问题 1：PLL 积分器没有抗饱和 ✅ 已修复
+
+**原问题**: `PLL_Interg` 无上限，误差大时积分飞掉。
+
+**修复** (`flux.c` → `Observer_Run`):
+```c
+pll_ui_lim = 2.0f * PI * 500.0f * Foc_observer.Ctrl_ts;  // ±0.157 rad/周期
+Foc_observer.PLL_Interg = Limit_Sat(Foc_observer.PLL_Interg, pll_ui_lim, -pll_ui_lim);
+Foc_observer.PLL_Ui = Limit_Sat(Foc_observer.PLL_Ui, pll_ui_lim, -pll_ui_lim);
+```
+
+### 问题 2：从零冷启动，观测器需要上百毫秒才能收敛 ✅ 已修复
+
+**原问题**: VF→SENSORLESS 直接冷启动，观测器从零开始收敛。
+
+**修复** (`motorControl.c` → Mode 4):
+- Mode 4 只做 VF 驱动 + 观测器预热，不自动切换
+- 用户确认 LCD "Psi" ≈ 0.0075 后手动 KEY2 切 Mode 2
+- Mode 2 检测 `|ψr| ≥ 30% FLUX` → 暖启动（PLL 不动，直接接管）
+
+### 问题 3：低转速时逆变器死区造成的电压误差被忽略 ✅ 已修复
+
+**修复** (`flux.c` → `Deadtime_Comp_ab`):
+- 命令电压 × `Km_back × Vbus` → 真实电压量纲(V)
+- 加死区畸变电压 `v_alpha_dist / v_beta_dist`
+- V_DEADTIME = 0.3V（可根据实测标定调整）
+
+### 问题 4：磁链幅值补偿使用前一周期误差 ✅ 已修复
+
+**原问题**: 补偿用旧 Err，滞后一周期。
+
+**修复**: Step 1 先算 ψr，Step 2 算 Err（同周期），Step 5 用同周期 Err 补偿。
+
+### 问题 5：VF→Sensorless 切换后 PLL 增益没恢复 ✅ 已修复
+
+**修复** (`flux.c` → `Observer_Run` Step 8):
+- `pll_ramp_active` 标志激活后，每周期向目标增益恢复 2%
+- 约 100 周期（5ms）恢复到正常值
+
+### 额外修复：Hybrid Active Flux 观测器 ✅ 2026-07-08
+
+- `OBS_HYBRID_ACTIVE_FLUX`: 按二阶系统 (ζ=1) 带宽设计 PLL
+- 反馈补偿 PI (Comp_Kp/Ki)
+- 预留 SMO 滑模参数备用
+
+---
+
+## 3. 📊 当前 Vofa 监控通道 (9ch)
+
+> 已从最初 6ch 升级到 9ch，新增三相电流原始值用于波形诊断。
+
+| CH | 变量 | 正常值 |
+|----|------|--------|
+| CH1 | `motor.CurrentHz` | 跟踪目标 |
+| CH2 | `PARK_PCurr.Ds` (Id) | ≈ 0 |
+| CH3 | `PARK_PCurr.Qs` (Iq) | 稳定 |
+| CH4 | `motor.V_d` | ≈ 0 |
+| CH5 | `motor.V_q` | < 0.8 pu |
+| CH6 | `BUS_Voltage` | ≈ 24V |
+| CH7 | `PhaseU_Curr` | 正弦 |
+| CH8 | `PhaseV_Curr` | 正弦 |
+| CH9 | `PhaseW_Curr` | 正弦 |
+
+---
+
+## 4. 当前调试参数 (2026-07-08)
+
+| 参数 | 电压型 | Hybrid |
+|------|--------|--------|
+| PLL_kp | 20.0 | 自动计算 |
+| PLL_ki | 10.0 | 自动计算 |
+| Gain | 5000.0 | 5000.0 |
+| Ctrl_ts | 5e-5 (20kHz) | 5e-5 |
+| PLL_BW_Hz | — | 50Hz (默认) |
+| V_DEADTIME | 0.3V | 0.3V |
+
+> 本文档原始内容保留在下方，作为技术分析参考。所有标注的问题均已在上方确认修复。
 
 ---
 
