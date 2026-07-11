@@ -17,6 +17,7 @@
 #define FAULT_OV            4       // 母线过压
 #define FAULT_UV            5       // 母线欠压
 #define FAULT_OC_BUS        6       // 母线电流过流
+#define FAULT_OT            7       // 过温 (NTC)
 
 void InvProtect_Check(void);
 void InvProtect_Clear(void);

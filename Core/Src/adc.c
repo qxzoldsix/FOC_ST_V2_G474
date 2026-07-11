@@ -264,6 +264,32 @@ void MX_ADC2_Init(void)
   }
   /* USER CODE BEGIN ADC2_Init 2 */
 
+  /* PB2/ADC2_IN12 — NTC3 温度采样, 加入 ADC2 注入组第 2 路 */
+  {
+    ADC_InjectionConfTypeDef sInj = {0};
+    sInj.InjectedSamplingTime        = ADC_SAMPLETIME_47CYCLES_5;
+    sInj.InjectedSingleDiff          = ADC_SINGLE_ENDED;
+    sInj.InjectedOffsetNumber        = ADC_OFFSET_NONE;
+    sInj.InjectedOffset              = 0;
+    sInj.InjectedNbrOfConversion     = 2;
+    sInj.InjectedDiscontinuousConvMode = DISABLE;
+    sInj.AutoInjectedConv            = DISABLE;
+    sInj.QueueInjectedContext        = DISABLE;
+    sInj.ExternalTrigInjecConv       = ADC_EXTERNALTRIGINJEC_T1_CC4;
+    sInj.ExternalTrigInjecConvEdge   = ADC_EXTERNALTRIGINJECCONV_EDGE_FALLING;
+    sInj.InjecOversamplingMode       = DISABLE;
+
+    /* Rank 1: 母线电压 (已有, 保持不变) */
+    sInj.InjectedChannel = ADC_CHANNEL_11;
+    sInj.InjectedRank    = ADC_INJECTED_RANK_1;
+    HAL_ADCEx_InjectedConfigChannel(&hadc2, &sInj);
+
+    /* Rank 2: PB2/ADC2_IN12 — NTC3 温度 */
+    sInj.InjectedChannel = ADC_CHANNEL_12;
+    sInj.InjectedRank    = ADC_INJECTED_RANK_2;
+    HAL_ADCEx_InjectedConfigChannel(&hadc2, &sInj);
+  }
+
   /* USER CODE END ADC2_Init 2 */
 
 }

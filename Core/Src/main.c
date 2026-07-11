@@ -118,8 +118,8 @@ int main(void)
 	Foc_Pwm_Start();
 	PMSM_init();
 	InvProtect_Enable();
-		Flux_Observer_Init();
-		PI_Init();  // 初始化速度环/电流环 PI 参数 
+	Flux_Observer_Init();
+	PI_Init();  // 初始化速度环/电流环 PI 参数 
  /* USER CODE END 2 */
 	while(1)
   {

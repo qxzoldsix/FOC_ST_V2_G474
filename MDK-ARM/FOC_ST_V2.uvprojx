@@ -739,6 +739,11 @@
               <FileType>1</FileType>
               <FilePath>..\UserSoftware\src\DrvPwmout.c</FilePath>
             </File>
+            <File>
+              <FileName>NTC.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\UserSoftware\src\NTC.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
