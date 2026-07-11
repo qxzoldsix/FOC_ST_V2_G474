@@ -36,6 +36,7 @@ extern "C" {
 #include "VF.h"
 #include "DrvPwmout.h"
 #include "flux.h"
+#include "NTC.h"
 
 #include "PI_Cale.h"
 #include "taskManager.h"

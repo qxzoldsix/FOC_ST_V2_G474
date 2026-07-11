@@ -7,7 +7,10 @@
 
 
 TaskTime  TasksPare[Task_Num];
-
+/**
+ * @brief  Vofa JustFloat 协议发送电机数据
+ * @note   每帧 = 6个float(各4字节, little-endian) + 帧尾(00 00 80 7F)
+ */
 
 /**
  * Vofa JustFloat 数据上报 (1ms / ~1kHz)
@@ -18,10 +21,13 @@ TaskTime  TasksPare[Task_Num];
  * CH4: Vd             — d 轴电压输出 (pu)
  * CH5: Vq             — q 轴电压输出 (pu)
  * CH6: BUS_Voltage    — 母线电压 (V)
+ * CH7: PhaseU_Curr    — U 相电流 (A)
+ * CH8: PhaseV_Curr    — V 相电流 (A)
+ * CH9: PhaseW_Curr    — W 相电流 (A)
  */
 void HFPeriod_RUN(void)
 {
-    static uint8_t buf[28];
+    static uint8_t buf[40];   // 9 floats × 4 + 4 byte tail = 40
     float *p = (float *)buf;
 
     p[0] = motor.CurrentHz;
@@ -30,25 +36,25 @@ void HFPeriod_RUN(void)
     p[3] = motor.V_d;
     p[4] = motor.V_q;
     p[5] = Volt_CurrPara.BUS_Voltage;
+    p[6] = Volt_CurrPara.PhaseU_Curr;
+    p[7] = Volt_CurrPara.PhaseV_Curr;
+    p[8] = Volt_CurrPara.PhaseW_Curr;
 
     // JustFloat frame tail
-    buf[24] = 0x00;
-    buf[25] = 0x00;
-    buf[26] = 0x80;
-    buf[27] = 0x7F;
+    buf[36] = 0x00;
+    buf[37] = 0x00;
+    buf[38] = 0x80;
+    buf[39] = 0x7F;
 
     CDC_Transmit_FS(buf, sizeof(buf));
 }
 
 
-/**
- * @brief  Vofa JustFloat 协议发送电机数据
- * @note   每帧 = 6个float(各4字节, little-endian) + 帧尾(00 00 80 7F)
- *         共28字节，~50Hz周期调用
- */
+
 void task_send_Rece(void)
 {
-		LED_TOGGLE();
+    LED_TOGGLE();
+    NTC_Task();
 }
 
 
@@ -64,58 +70,30 @@ void KEY_RUN(void)
 
     /* ---- KEY1 (PC9): short = start/stop, long = clear fault ---- */
     if (key_array[key_sw1].key_value == key_click_one) {
-        if (motor.Control_Mode == 0) {
-            motor.Control_Mode = 3;  // default to VF on start
-            Foc_Pwm_Start();
-        } else {
-            motor.Control_Mode = 0;  // STOP
-            Foc_Pwm_Stop();
-        }
+        // TODO: start/stop
     }
     if (key_array[key_sw1].key_value == key_long_press) {
-        InvProtect_Clear();
-        Foc_Pwm_Start();             // re-enable PWM after fault clear
+        // TODO: clear fault
     }
     key_array[key_sw1].key_value = key_none;
 
-    /* ---- KEY2 (PC8): short = mode cycle: STOP->VF->Sensorless->Prepos->STOP ---- */
+    /* ---- KEY2 (PC8): short = mode cycle: STOP->VF->PREPOS->Sensorless ---- */
     if (key_array[key_sw2].key_value == key_click_one) {
-        static const uint8_t mode_cycle[] = {0, 3, 4, 2};  // STOP, VF, PREPOS, Sensorless
-        uint8_t i;
-        for (i = 0; i < 4; i++) {
-            if (motor.Control_Mode == mode_cycle[i]) break;
-        }
-        if (i < 4) {
-            motor.Control_Mode = mode_cycle[(i + 1) % 4];
-        } else {
-            motor.Control_Mode = 3;  // unknown state -> VF
-        }
-        if (motor.Control_Mode == 0) Foc_Pwm_Stop();
-        else                         Foc_Pwm_Start();
+        // TODO: mode cycle
     }
     key_array[key_sw2].key_value = key_none;
 
     /* ---- KEY3 (PC7): short = TargetHz +5, long = continuous +5 ---- */
     if (key_array[key_sw3].key_value == key_click_one ||
         key_array[key_sw3].key_value == key_long_press) {
-        motor.TargetHz += 5.0f;
-        if (motor.TargetHz > VF_FREQ_MAX) motor.TargetHz = VF_FREQ_MAX;
-        /* 无感模式下同步更新速度环目标 */
-        if (motor.Control_Mode == 2) {
-            SpeedRpm_GXieLv.XieLv_X = motor.TargetHz * 60.0f / (MOTOR_POLES / 2.0f);
-        }
+        // TODO: TargetHz +5
     }
     key_array[key_sw3].key_value = key_none;
 
     /* ---- KEY4 (PC6): short = TargetHz -5, long = continuous -5 ---- */
     if (key_array[key_sw4].key_value == key_click_one ||
         key_array[key_sw4].key_value == key_long_press) {
-        motor.TargetHz -= 5.0f;
-        if (motor.TargetHz < 0.0f) motor.TargetHz = 0.0f;
-        /* 无感模式下同步更新速度环目标 */
-        if (motor.Control_Mode == 2) {
-            SpeedRpm_GXieLv.XieLv_X = motor.TargetHz * 60.0f / (MOTOR_POLES / 2.0f);
-        }
+        // TODO: TargetHz -5
     }
     key_array[key_sw4].key_value = key_none;
 }
@@ -177,6 +155,18 @@ void Task_DEBUG(void)
                                 FluxR_in_wb[1] * FluxR_in_wb[1]);
         LCD_ShowString(5, 114, (uint8_t *)"Psi", WHITE, BLACK, 12, 0);
         LCD_ShowFloatNum1(45, 114, fluxr_mag, 5, 4, MAGENTA, BLACK, 12);
+    }
+
+    // y=132: NTC 温度 T1(PB12) / T2(PB1)
+    {
+        uint16_t c1 = (ntc.ot_fault || ntc.ntc1_c > NTC_OT_WARN_C) ? RED : GREEN;
+        uint16_t c2 = (ntc.ot_fault || ntc.ntc2_c > NTC_OT_WARN_C) ? RED : GREEN;
+
+        LCD_ShowString(5, 132, (uint8_t *)"T1", WHITE, BLACK, 12, 0);
+        LCD_ShowFloatNum1(25, 132, ntc.ntc1_c, 4, 1, c1, BLACK, 12);
+
+        LCD_ShowString(90, 132, (uint8_t *)"T2", WHITE, BLACK, 12, 0);
+        LCD_ShowFloatNum1(110, 132, ntc.ntc2_c, 4, 1, c2, BLACK, 12);
     }
 }
 

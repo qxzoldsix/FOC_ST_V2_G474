@@ -5,7 +5,7 @@
 > **控制模式**: 无感 FOC (Sensorless) / VF 开环 / PREPOS 预定位  
 > **位置估算**: 电压模型磁链观测器 + PLL 锁相环  
 > **调制方式**: SVPWM (7段式, 20kHz)  
-> **状态**: ✅ 闭环可运行
+> **状态**: ✅ 闭环可运行 | 更新日期: 2026-07-08
 
 ---
 
@@ -156,6 +156,8 @@ Ia, Ib, Ic  (三相电流)
 - PLL 积分抗饱和 (Limit_Sat)
 - 磁链误差同周期反馈 (消除一周期延迟)
 - PLL 增益自动 ramp 恢复
+- 支持 Hybrid Active Flux 模式 (`OBS_HYBRID_ACTIVE_FLUX`)，按二阶系统带宽设计 PLL
+- 预留 SMO 滑模观测器参数（备用）
 
 ### 5.3 PI 控制器
 
@@ -209,7 +211,7 @@ Ia, Ib, Ic  (三相电流)
 
 ## 9. Vofa+ 上位机监控
 
-- 协议: JustFloat | 帧长: 28 字节 (6×float + 00 00 80 7F) | 接口: USB-CDC
+- 协议: JustFloat | 帧长: 40 字节 (9×float + 00 00 80 7F) | 接口: USB-CDC | 帧率: ~1kHz
 
 | CH | 变量 | 含义 | 正常值 |
 |----|------|------|--------|
@@ -219,6 +221,9 @@ Ia, Ib, Ic  (三相电流)
 | CH4 | `motor.V_d` | d 轴电压 (pu) | ≈ 0 |
 | CH5 | `motor.V_q` | q 轴电压 (pu) | < 0.8 |
 | CH6 | `BUS_Voltage` | 母线电压 (V) | ≈ 24V |
+| CH7 | `PhaseU_Curr` | U 相电流 (A) | 正弦 |
+| CH8 | `PhaseV_Curr` | V 相电流 (A) | 正弦 |
+| CH9 | `PhaseW_Curr` | W 相电流 (A) | 正弦 |
 
 ---
 
@@ -265,7 +270,9 @@ Ia, Ib, Ic  (三相电流)
 | `MOTOR_RS/LS/FLUX/POLES` | `Flux/inc/flux.h` | 电机参数 |
 | `pi_spd/pi_id/pi_iq` | `UserSoftware/src/PI_Cale.c` | PI 增益 |
 | `Foc_observer.Gain` | `Flux/src/flux.c` | 磁链补偿增益 (5000) |
-| `Foc_observer.PLL_kp/ki` | `Flux/src/flux.c` | PLL 增益 (20/10) |
+| `Foc_observer.PLL_kp/ki` | `Flux/src/flux.c` | PLL 增益 (20/10, Hybrid 自动计算) |
+| `OBSERVER_TYPE` | `Flux/inc/flux.h` | 观测器类型: 0=电压型, 1=Hybrid Active Flux |
+| `HYBRID_PLL_BW_HZ` | `Flux/inc/flux.h` | Hybrid PLL 带宽 (Hz) |
 | `VF_VOLTAGE_MIN/MAX` | `Foc_Control/inc/VF.h` | VF 电压范围 |
 | `OC_THRESHOLD_A` | `UserSoftware/inc/InvProtect.h` | 过流阈值 (20A) |
 | `targetVolt` | 运行时设置 | VF 目标电压 (推荐 ≥0.10 for 25Hz) |
