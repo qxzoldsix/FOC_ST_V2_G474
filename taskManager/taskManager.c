@@ -54,11 +54,7 @@ void HFPeriod_RUN(void)
 void task_send_Rece(void)
 {
     LED_TOGGLE();
-
-    /* NTC 温度采样 + 转换 (20ms 周期) */
-    NTC_Sample_Raw();
-    NTC_Convert_All();
-    NTC_Protect_Check();
+    NTC_Task();
 }
 
 
@@ -161,16 +157,16 @@ void Task_DEBUG(void)
         LCD_ShowFloatNum1(45, 114, fluxr_mag, 5, 4, MAGENTA, BLACK, 12);
     }
 
-    // y=132: NTC 温度 T1(MOS) / T2(Motor)
+    // y=132: NTC 温度 T1(PB12) / T2(PB1)
     {
-        uint16_t color_t1 = (ntc.ot_fault || ntc.ntc1_temp_c > NTC_OT_WARN_C) ? RED : GREEN;
-        uint16_t color_t2 = (ntc.ot_fault || ntc.ntc2_temp_c > NTC_OT_WARN_C) ? RED : GREEN;
+        uint16_t c1 = (ntc.ot_fault || ntc.ntc1_c > NTC_OT_WARN_C) ? RED : GREEN;
+        uint16_t c2 = (ntc.ot_fault || ntc.ntc2_c > NTC_OT_WARN_C) ? RED : GREEN;
 
         LCD_ShowString(5, 132, (uint8_t *)"T1", WHITE, BLACK, 12, 0);
-        LCD_ShowFloatNum1(25, 132, ntc.ntc1_temp_c, 4, 1, color_t1, BLACK, 12);
+        LCD_ShowFloatNum1(25, 132, ntc.ntc1_c, 4, 1, c1, BLACK, 12);
 
         LCD_ShowString(90, 132, (uint8_t *)"T2", WHITE, BLACK, 12, 0);
-        LCD_ShowFloatNum1(110, 132, ntc.ntc2_temp_c, 4, 1, color_t2, BLACK, 12);
+        LCD_ShowFloatNum1(110, 132, ntc.ntc2_c, 4, 1, c2, BLACK, 12);
     }
 }
 

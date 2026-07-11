@@ -14,16 +14,15 @@
 #define NTC_B_VALUE     3950.0f    // B 值
 #define NTC_T_REF       298.15f    // 25°C = 298.15K
 
-/* ========== PB12 NTC 插头检测 ========== */
-#define NTC_PB12_ENABLE  0         // 1=启用PB12(NTC1), 0=禁用(未插插头)
+/* ========== 电机温度 NTC 插头检测 ========== */
+#define NTC_PB12_ENABLE  0         // 1=启用(NTC1), 0=禁用
 
 /* ========== 过温阈值 ========== */
 #define NTC_OT_WARN_C    80.0f
 #define NTC_OT_FAULT_C  100.0f
 
-/* ========== 数据结构 ========== */
 typedef struct {
-    float ntc1_c;    // PB12 (需插头)
+    float ntc1_c;    // PB12 (需插)
     float ntc2_c;    // PB1
     float ntc3_c;    // PB2
     uint8_t ot_warn;
@@ -32,9 +31,8 @@ typedef struct {
 
 extern NTC_Data ntc;
 
-/* ========== API ========== */
 float NTC_AdcToTemp_C(uint16_t adc_raw);
-void  NTC_Task(void);       // 采样 + 转换 + 保护, 后台周期调用
+void  NTC_Task(void);     
 
 #endif
 
