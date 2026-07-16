@@ -114,10 +114,84 @@
 - 需要: 霍尔/正交编码器/磁编码器接口与驱动程序
 - Mode 1 代码链路已通 (`UVW_Axis_DQ` + `Speed_FOC` + `Idq_FOC` + `FOC_Svpwm_dq`)，仅缺角度来源
 
-### 9. CAN 总线通信
+### 9. CANFD 总线通信 🔥
 
-- 项目已有 `fdcan.c/h` 初始化，但未定义应用层协议
-- 可用于多机协同、参数下发、状态上报
+> 底板 FDCAN1 硬件已配好 (PB8 RX / PB9 TX)，CubeMX 也生成了 `MX_FDCAN1_Init()`，
+> 但现在只是个空壳，懒得搞啊 —— 经典CAN模式、没滤波器、没收发逻辑，跟没配差不多。
+> 下面是从零到能用的完整 TODO，按依赖顺序排。
+
+#### 9.1 改 FDCAN 初始化 — 切到 CANFD 模式
+
+- **文件**: `Core/Src/fdcan.c` → `MX_FDCAN1_Init()`
+- **现状**: `FrameFormat = FDCAN_FRAME_CLASSIC`，经典CAN，白瞎了G4的CANFD硬件
+- **要改的**:
+  - `FrameFormat` → `FDCAN_FRAME_FD_BRS` (FD帧 + 波特率切换)
+  - 仲裁段波特率 1Mbps (通用)，数据段波特率 5Mbps / 8Mbps (FD加速)
+  - 重新算 Nominal 和 Data 段的 Prescaler / Seg1 / Seg2 / SJW，别tm用CubeMX默认值
+  - 时钟源 PCLK1 = 170MHz，仲裁段 1Mbps → Prescaler=1, Seg1=127, Seg2=42 之类
+  - **别忘了** `DataPrescaler/DataTimeSeg1/DataTimeSeg2` 也要配，不然FD等于没开
+- **坑**: Nominal timing 参数跟经典CAN一样算，Data段是独立的，别混了
+
+#### 9.2 配 TX/RX Buffer 和过滤器
+
+- **文件**: `Core/Src/fdcan.c`
+- TX: 配一个 TX FIFO (深度8~16)，或者用 TX Buffer 专用槽位
+- RX: 配 RX FIFO0 + RX FIFO1，或者 RX Buffer 按 ID 分组
+- **过滤器**: 至少加一组标准帧过滤器，不配的话啥也收不到
+  - `StdFiltersNbr` 改成 1 或 2
+  - `FilterConfig` 里配 FilterID1/MaskID1，先全收 (`MaskID=0x000`) 调试通了再收紧
+- 中断: IT0 已经开了但没回调，后面 9.3 补
+
+#### 9.3 写 CANFD 驱动层 (`canfd_driver.c/h`)
+
+- **新建文件**: `UserSoftware/inc/canfd_driver.h`, `UserSoftware/src/canfd_driver.c`
+- **API 清单**:
+  - `CANFD_Init()` — 初始化 + 启动
+  - `CANFD_Send(uint32_t id, uint8_t *data, uint8_t len)` — 发FD帧 (len最大64)
+  - `CANFD_SendClassic(uint32_t id, uint8_t *data, uint8_t len)` — 退化为经典CAN帧 (len≤8)，兼容老设备
+  - `CANFD_SetFilter(uint32_t id, uint32_t mask)` — 动态改过滤器
+  - `CANFD_GetRxFrame(CANFD_RxFrame_t *frame)` — 取一帧接收数据
+  - `CANFD_GetRxCount()` — 看看收了多少帧没处理
+- **中断回调**: `HAL_FDCAN_RxFifo0Callback()` / `HAL_FDCAN_TxFifoEmptyCallback()` 写到驱动里
+  - 接收用环形缓冲存帧，别在中断里处理业务逻辑，tm会丢帧
+- **错误处理**: Error callback 至少记个错，总线Off了能自动恢复
+
+#### 9.4 定义 CANFD 通信协议
+
+- **新建文件**: `UserSoftware/inc/canfd_protocol.h` (协议定义)
+- **设计帧ID分配** :
+  | ID范围 | 方向 | 内容 |
+  |--------|------|------|
+  | 0x100~0x11F | PC→板子 | 控制指令 (启停/模式切换/参数写入) |
+  | 0x200~0x21F | 板子→PC | 状态上报 (转速/电流/温度/故障码) |
+  | 0x300~0x30F | 双向 | 参数读写 (PI参数/电机参数) |
+  | 0x700~0x70F | 板子→PC | 高速数据上报 (Vofa风格的实时波形) |
+- **帧格式定义**:
+  - 控制帧: [CMD(1B) | SubCMD(1B) | Data(0~62B)]
+  - 状态帧: [Mode(1B) | Fault(2B) | Speed_f32(4B) | Iq_f32(4B) | Vbus_f32(4B) | Temp(2B) | ...]
+  - 经典CAN兼容帧: 头8字节用经典格式，方便老工具监听
+- **建议**: 高速波形帧用FD长帧 (64字节一口气发10个float)，别像Vofa串口那样一个float一个float发，CANFD带宽不用tm浪费了
+
+#### 9.5 集成到任务调度
+
+- **文件**: `taskManager/taskManager.c` + `taskManager/taskManager.h`
+- 新增任务 `CANFD_Task()`，周期 1ms / 2ms:
+  - 调 `CANFD_GetRxFrame()` 取指令 → 解析 → 改 motor mode / 目标转速 / PI参数
+  - 调 `CANFD_Send()` 发状态帧
+- 高速波形上报可以单独一个更快周期 (如 500µs / 1kHz)，或者用定时器触发
+- **Task_Num** 别忘了 +1
+
+#### 9.6 上位机/调试工具对接
+
+- Vofa 那边可以用CAN转USB工具读，或者自己写个 Python 脚本解析
+- 也可以复用现有 `CDC_Transmit_FS` 的 Vofa 数据，CAN 和 USB 并行发不冲突
+- **测试步骤**:
+  1. 先用回环模式 (`FDCAN_MODE_EXTERNAL_LOOPBACK`) 自发自收，确认驱动没问题
+  2. 接 CAN 分析仪 (USB-CAN)，发标准帧看板子能不能收到
+  3. 切 CANFD 帧 (BRS)，确认数据段高速通信正常
+  4. 挂总线上跑长时间测试 (至少1小时)，看有没有丢帧/错误帧
+
+> **总结**: 硬件已经有了，CubeMX也配了，就差人tm写代码。优先级可以放在观测器算法稳定之后搞，毕竟CANFD是锦上添花不是救命的功能。
 
 ### 10. 参数存储
 
