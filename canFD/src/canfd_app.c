@@ -162,9 +162,13 @@ int8_t CANFD_Heartbeat_Send(void)
 }
 
 /* ========== 发送紧急报文 ========== */
-int8_t CANFD_EMCY_Send(uint8_t fault_code)
+int8_t CANFD_EMCY_Send(uint16_t fault_code)
 {
-    uint8_t data[4] = {fault_code, 0x00, 0x00, 0x00};
+    uint8_t data[4];
+    data[0] = (uint8_t)(fault_code & 0xFF);
+    data[1] = (uint8_t)(fault_code >> 8);
+    data[2] = 0x00;
+    data[3] = 0x00;
     return CANFD_SendMessage(COB_EMCY, data, 4, 0);
 }
 

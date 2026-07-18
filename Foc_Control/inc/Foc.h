@@ -23,7 +23,7 @@ typedef struct
 	float OpenTheta;			// VF 开环角度 (rad)
 	float TargetHz;				// 目标电频率 (Hz)
 	float TargetVolt;			// 目标电压 (V)
-	uint8_t    Fault_DTC;      // 故障码
+	uint16_t   Fault_DTC;      // 故障码（位掩码）
 	int16_t IQAngle;            // 电角度 (0~4095)
 	uint8_t Control_Mode;		// 0:停机 1:有感 2:无感 3:VF 4:预定位
 }Control_FB;

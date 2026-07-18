@@ -49,7 +49,7 @@
 #define SDO_ERR_READ_ONLY   0x06010002
 #define SDO_ERR_RANGE       0x06090030
 
-/* ========== PDO1 TX: 电机状态 (32字节) ========== */
+/* ========== PDO1 TX: 电机状态 (33字节, pack(1)) ========== */
 #pragma pack(1)
 typedef struct {
     float    SpeedRPM;        // [0:3]   实际转速
@@ -57,11 +57,11 @@ typedef struct {
     float    V_amp;           // [8:11]  输出电压幅值
     float    TargetHz;        // [12:15] 目标频率
     float    TargetVolt;      // [16:19] 目标电压
-    uint8_t  Fault_DTC;       // [20]    故障码
-    uint8_t  Control_Mode;    // [21]    控制模式
-    int16_t  IQAngle;         // [22:23] 电角度(0~4095)
-    float    V_d;             // [24:27] Vd电压
-    float    V_q;             // [28:31] Vq电压
+    uint16_t Fault_DTC;       // [20:21] 故障码（位掩码）
+    uint8_t  Control_Mode;    // [22]    控制模式
+    int16_t  IQAngle;         // [23:24] 电角度(0~4095)
+    float    V_d;             // [25:28] Vd电压
+    float    V_q;             // [29:32] Vq电压
 } PDO1_TX_Data;
 
 /* ========== PDO1 RX: 控制指令 (12字节) ========== */
@@ -129,7 +129,7 @@ void CANFD_App_Process(void);
 int8_t CANFD_PDO1_TX_Send(void);
 int8_t CANFD_PDO2_TX_Send(void);
 int8_t CANFD_Heartbeat_Send(void);
-int8_t CANFD_EMCY_Send(uint8_t fault_code);
+int8_t CANFD_EMCY_Send(uint16_t fault_code);
 
 /* 用户需要在应用层实现的回调 */
 extern void CANFD_OnNMT(uint8_t cmd);
