@@ -152,3 +152,50 @@ void PWM_SetDuty(uint16_t ccr1, uint16_t ccr2, uint16_t ccr3)
     __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_2, ccr2);
     __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_3, ccr3);
 }
+
+/* ========== CAN FD 回调 ========== */
+
+void CANFD_OnNMT(uint8_t cmd)
+{
+    switch (cmd) {
+        case NMT_START:
+            if (motor.Control_Mode == 0) motor.Control_Mode = 3;  // STOP→VF
+            break;
+        case NMT_STOP:
+            motor.Control_Mode = 0;
+            break;
+        case NMT_RESET:
+            NVIC_SystemReset();
+            break;
+        default: break;
+    }
+}
+
+void CANFD_OnPDO1_RX(PDO1_RX_Data *data)
+{
+    if (data == NULL) return;
+
+    motor.TargetHz   = data->TargetHz;
+    motor.Control_Mode = data->Control_Mode;
+
+    switch (data->Command) {
+        case CTRL_START:
+            if (motor.Control_Mode == 0) motor.Control_Mode = 3;
+            break;
+        case CTRL_STOP:
+        case CTRL_QUICK_STOP:
+            motor.Control_Mode = 0;
+            break;
+        case CTRL_FAULT_CLEAR:
+            InvProtect_Clear();
+            break;
+        default: break;
+    }
+}
+
+void CANFD_OnPDO2_RX(PDO2_RX_Data *data)
+{
+    if (data == NULL) return;
+    // Id/Iq 目标值，后续接入电流环
+    (void)data;
+}

@@ -17,6 +17,7 @@ extern "C" {
 #include "usart.h"
 #include "spi.h"
 #include "fdcan.h"
+#include "canfd_app.h"
 
 #include "usb_device.h"
 #include "usbd_cdc_if.h"

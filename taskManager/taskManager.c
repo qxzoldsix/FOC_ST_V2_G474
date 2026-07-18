@@ -5,7 +5,6 @@
  */
 #include "headline.h"
 
-
 TaskTime  TasksPare[Task_Num];
 /**
  * @brief  Vofa JustFloat 协议发送电机数据
@@ -102,6 +101,19 @@ void KEY_RUN(void)
 
 
 
+void CANFD_Task(void)
+{
+    static uint8_t sub_tick = 0;
+
+    CANFD_PDO1_TX_Send();   // 每10ms发送电机状态
+
+    sub_tick++;
+    if (sub_tick >= 5) sub_tick = 0;
+
+    if (sub_tick == 1) CANFD_PDO2_TX_Send();    // 每50ms发送扩展数据
+    if (sub_tick == 2) CANFD_Heartbeat_Send();  // 每50ms发送心跳
+}
+
 void Task_DEBUG(void)
 {
     // ============ 顶部状态栏：模式 + V_amp ============
@@ -192,7 +204,11 @@ void Task_Manage_List_Init(void)
 
     TasksPare[4].Task_Period = DebugPeriod_COUNT;
     TasksPare[4].Task_Count=600;
-    TasksPare[4].Task_Function = Task_DEBUG;   
+    TasksPare[4].Task_Function = Task_DEBUG;
+
+    TasksPare[5].Task_Period = CANFD_COUNT;
+    TasksPare[5].Task_Count  = 5;
+    TasksPare[5].Task_Function = CANFD_Task;
 	
 		HAL_TIM_Base_Start_IT(&htim3);
 }
