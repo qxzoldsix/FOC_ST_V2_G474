@@ -136,7 +136,7 @@ int8_t CANFD_PDO1_TX_Send(void)
     pdo.V_d         = motor.V_d;
     pdo.V_q         = motor.V_q;
 
-    return CANFD_SendMessage(COB_PDO1_TX, (uint8_t*)&pdo, sizeof(pdo), 1);
+    return CANFD_SendMessage(COB_PDO1_TX, (uint8_t*)&pdo, sizeof(pdo), 0);
 }
 
 /* ========== 发送 PDO2: 扩展数据 ========== */
@@ -150,7 +150,7 @@ int8_t CANFD_PDO2_TX_Send(void)
     pdo.Id   = PARK_PCurr.Ds;
     pdo.Iq   = PARK_PCurr.Qs;
 
-    return CANFD_SendMessage(COB_PDO2_TX, (uint8_t*)&pdo, sizeof(pdo), 1);
+    return CANFD_SendMessage(COB_PDO2_TX, (uint8_t*)&pdo, sizeof(pdo), 0);
 }
 
 /* ========== 发送心跳 ========== */

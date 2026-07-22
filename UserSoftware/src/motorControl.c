@@ -125,6 +125,10 @@ void Foc_Control(void)
             }
             break;
 
+        case 5: /* 参数辨识 — Rs / Ld / Lq 顺序辨识 */
+            if (mode_just_entered) ParamId_Start();
+            ParamId_Run();
+            break;
 
         default:
             break;

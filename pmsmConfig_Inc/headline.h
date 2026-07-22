@@ -38,6 +38,7 @@ extern "C" {
 #include "DrvPwmout.h"
 #include "flux.h"
 #include "NTC.h"
+#include "ParamId.h"
 
 #include "PI_Cale.h"
 #include "taskManager.h"
