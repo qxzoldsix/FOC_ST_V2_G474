@@ -40,15 +40,15 @@ void MX_FDCAN1_Init(void)
   hfdcan1.Instance = FDCAN1;
   hfdcan1.Init.ClockDivider = FDCAN_CLOCK_DIV1;
   hfdcan1.Init.FrameFormat = FDCAN_FRAME_CLASSIC;
-  hfdcan1.Init.Mode = FDCAN_MODE_EXTERNAL_LOOPBACK;
+  hfdcan1.Init.Mode = FDCAN_MODE_NORMAL;       // ← 正常模式，接 PCAN-View
   hfdcan1.Init.AutoRetransmission = DISABLE;
   hfdcan1.Init.TransmitPause = DISABLE;
-  hfdcan1.Init.ProtocolException = ENABLE;
-  hfdcan1.Init.NominalPrescaler = 4;
+  hfdcan1.Init.ProtocolException = ENABLE;  // ← 防止协议异常锁死
+  hfdcan1.Init.NominalPrescaler = 4;   // 160M/(4×(1+31+8)) = 1Mbps
   hfdcan1.Init.NominalSyncJumpWidth = 8;
   hfdcan1.Init.NominalTimeSeg1 = 31;
   hfdcan1.Init.NominalTimeSeg2 = 8;
-  hfdcan1.Init.DataPrescaler = 2;
+  hfdcan1.Init.DataPrescaler = 2;      // 80M/(2×(1+12+3)) = 5Mbps
   hfdcan1.Init.DataSyncJumpWidth = 3;
   hfdcan1.Init.DataTimeSeg1 = 12;
   hfdcan1.Init.DataTimeSeg2 = 3;
@@ -60,6 +60,15 @@ void MX_FDCAN1_Init(void)
     Error_Handler();
   }
   /* USER CODE BEGIN FDCAN1_Init 2 */
+  /*
+   * HAL 未写入 FIFO 大小，需手动配置。
+   * 注意: RXF0S 读写共用地址，写=配置，读=状态，必须直接赋值。
+   */
+  hfdcan1.Instance->TXBC  = (3U << 24U);  /* TX FIFO: 3 elements   */
+  hfdcan1.Instance->RXF0S = (3U << 16U);  /* RX FIFO0: 3 elements  */
+  hfdcan1.Instance->RXF1S = 0U;           /* RX FIFO1: 禁用        */
+  hfdcan1.Instance->TXEFS = 0U;           /* TX Event FIFO: 禁用   */
+
   FDCAN_FilterTypeDef sFilter = {0};
   sFilter.IdType       = FDCAN_STANDARD_ID;
   sFilter.FilterIndex  = 0;

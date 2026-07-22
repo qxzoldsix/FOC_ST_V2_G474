@@ -14,9 +14,9 @@ static int8_t SDO_WriteRegister(SDO_Register reg, uint32_t value);
 
 /* ========== 模块内部变量 ========== */
 static uint8_t canfd_node_state = NODE_STATE_OPERATIONAL;
-static uint32_t canfd_rx_cnt = 0;
-static uint32_t canfd_tx_cnt = 0;
-static uint32_t canfd_err_cnt = 0;
+uint32_t canfd_rx_cnt = 0;
+uint32_t canfd_tx_cnt = 0;
+uint32_t canfd_err_cnt = 0;
 
 /* ========== SDO 寄存器写权限过滤 ========== */
 static uint8_t SDO_IsReadOnly(SDO_Register reg)
@@ -99,6 +99,19 @@ static int8_t SDO_WriteRegister(SDO_Register reg, uint32_t value)
     return 0;
 }
 
+/* ========== 字节数 → CAN FD DLC 码 ========== */
+static uint32_t CANFD_BytesToDLC(uint32_t bytes)
+{
+    if (bytes <= 8)  return bytes;                  // DLC 0~8
+    if (bytes <= 12) return FDCAN_DLC_BYTES_12;     // DLC 9
+    if (bytes <= 16) return FDCAN_DLC_BYTES_16;     // DLC 10
+    if (bytes <= 20) return FDCAN_DLC_BYTES_20;     // DLC 11
+    if (bytes <= 24) return FDCAN_DLC_BYTES_24;     // DLC 12
+    if (bytes <= 32) return FDCAN_DLC_BYTES_32;     // DLC 13
+    if (bytes <= 48) return FDCAN_DLC_BYTES_48;     // DLC 14
+    return FDCAN_DLC_BYTES_64;                       // DLC 15
+}
+
 /* ========== 发送 CAN FD 消息 ========== */
 static int8_t CANFD_SendMessage(uint32_t id, uint8_t *data, uint32_t len, uint8_t is_fd)
 {
@@ -106,7 +119,7 @@ static int8_t CANFD_SendMessage(uint32_t id, uint8_t *data, uint32_t len, uint8_
     txHeader.Identifier = id;
     txHeader.IdType = FDCAN_STANDARD_ID;
     txHeader.TxFrameType = FDCAN_DATA_FRAME;
-    txHeader.DataLength = len << 16;  // FDCAN_DLC_BYTES_xx
+    txHeader.DataLength = CANFD_BytesToDLC(len);
     txHeader.ErrorStateIndicator = FDCAN_ESI_ACTIVE;
     txHeader.BitRateSwitch = is_fd ? FDCAN_BRS_ON : FDCAN_BRS_OFF;
     txHeader.FDFormat = is_fd ? FDCAN_FD_CAN : FDCAN_CLASSIC_CAN;
@@ -136,7 +149,7 @@ int8_t CANFD_PDO1_TX_Send(void)
     pdo.V_d         = motor.V_d;
     pdo.V_q         = motor.V_q;
 
-    return CANFD_SendMessage(COB_PDO1_TX, (uint8_t*)&pdo, sizeof(pdo), 0);
+    return CANFD_SendMessage(COB_PDO1_TX, (uint8_t*)&pdo, 8, 0);  // 经典CAN只发前8字节
 }
 
 /* ========== 发送 PDO2: 扩展数据 ========== */
@@ -150,7 +163,7 @@ int8_t CANFD_PDO2_TX_Send(void)
     pdo.Id   = PARK_PCurr.Ds;
     pdo.Iq   = PARK_PCurr.Qs;
 
-    return CANFD_SendMessage(COB_PDO2_TX, (uint8_t*)&pdo, sizeof(pdo), 0);
+    return CANFD_SendMessage(COB_PDO2_TX, (uint8_t*)&pdo, 8, 0);  // 经典CAN只发前8字节
 }
 
 /* ========== 发送心跳 ========== */

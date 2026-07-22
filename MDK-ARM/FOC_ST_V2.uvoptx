@@ -323,7 +323,39 @@
         <Ww>
           <count>33</count>
           <WinNumber>1</WinNumber>
-          <ItemText>canfd_tx_cnt</ItemText>
+          <ItemText>canfd_tx_cnt,0x0A</ItemText>
+        </Ww>
+        <Ww>
+          <count>34</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>\canfd_app.o\canfd_rx_cnt
+\canfd_app.o\canfd_tx_cnt
+\canfd_app.o\canfd_err_cnt</ItemText>
+        </Ww>
+        <Ww>
+          <count>35</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>canfd_rx_cnt,0x0A</ItemText>
+        </Ww>
+        <Ww>
+          <count>36</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>canfd_err_cnt</ItemText>
+        </Ww>
+        <Ww>
+          <count>37</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>hfdcan1.ErrorCode</ItemText>
+        </Ww>
+        <Ww>
+          <count>38</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>hfdcan1.Instance-&gt;TXBC</ItemText>
+        </Ww>
+        <Ww>
+          <count>39</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>hfdcan1.Instance-&gt;CCCR</ItemText>
         </Ww>
       </WatchWindow1>
       <Tracepoint>
