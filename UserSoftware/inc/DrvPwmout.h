@@ -6,14 +6,16 @@
 #ifndef __DRVPWMOUT_H_
 #define __DRVPWMOUT_H_
 
-#include "headline.h"
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-void Foc_Pwm_Start(void);
+uint8_t Foc_Pwm_Init(void);
+uint8_t Foc_Pwm_Start(void);
 void Foc_Pwm_Stop(void);
+uint8_t Foc_Pwm_IsEnabled(void);
 
 #ifdef __cplusplus
 }

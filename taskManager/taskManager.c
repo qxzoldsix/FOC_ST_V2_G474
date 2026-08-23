@@ -118,11 +118,12 @@ void Task_DEBUG(void)
 {
     // ============ 顶部状态栏：模式 + V_amp ============
     switch (motor.Control_Mode) {
-        case 0: LCD_ShowString(75, 5, (uint8_t *)"[STOP]       ", WHITE, DARKBLUE, 12, 0); break;			
-        case 1: LCD_ShowString(75, 5, (uint8_t *)"[SENSOR]     ", GREEN, DARKBLUE, 12, 0); break;
-			  case 2: LCD_ShowString(75, 5, (uint8_t *)"[SENSORLESS] ", GREEN, DARKBLUE, 12, 0); break;     // 无感FOC
-				case 3: LCD_ShowString(75, 5, (uint8_t *)"[ VF ]       ", GREEN, DARKBLUE, 12, 0); break;     // VF开环
-        case 4: LCD_ShowString(75, 5, (uint8_t *)"[PREPOS]     ", GREEN, DARKBLUE, 12, 0); break;
+        case MOTOR_MODE_STOP:       LCD_ShowString(75, 5, (uint8_t *)"[STOP]       ", WHITE, DARKBLUE, 12, 0); break;
+        case MOTOR_MODE_SENSOR:     LCD_ShowString(75, 5, (uint8_t *)"[SENSOR]     ", GREEN, DARKBLUE, 12, 0); break;
+        case MOTOR_MODE_SENSORLESS: LCD_ShowString(75, 5, (uint8_t *)"[SENSORLESS] ", GREEN, DARKBLUE, 12, 0); break;
+        case MOTOR_MODE_VF:         LCD_ShowString(75, 5, (uint8_t *)"[ VF ]       ", GREEN, DARKBLUE, 12, 0); break;
+        case MOTOR_MODE_PREPOS:     LCD_ShowString(75, 5, (uint8_t *)"[PREPOS]     ", GREEN, DARKBLUE, 12, 0); break;
+        case MOTOR_MODE_PARAM_ID:   LCD_ShowString(75, 5, (uint8_t *)"[PARAM ID]   ", YELLOW, DARKBLUE, 12, 0); break;
         default: LCD_ShowString(75, 5, (uint8_t *)"[ ?? ]      ", WHITE, DARKBLUE, 12, 0); break;
     }
     LCD_ShowFloatNum1(170, 3, Volt_CurrPara.BUS_Voltage, 4, 3, GREEN, DARKBLUE, 16);
@@ -135,11 +136,12 @@ void Task_DEBUG(void)
 
     // ============ 模式栏 ============
     switch (motor.Control_Mode) {
-        case 0: LCD_ShowString(50, 45, (uint8_t *)"[STOP]       ", WHITE, BLACK, 12, 0); break;			
-        case 1: LCD_ShowString(50, 45, (uint8_t *)"[SENSOR]     ", GREEN, BLACK, 12, 0); break;			//READY
-			  case 2: LCD_ShowString(50, 45, (uint8_t *)"[SENSORLESS] ", GREEN, BLACK, 12, 0); break;     // 有感
-				case 3: LCD_ShowString(50, 45, (uint8_t *)"[ VF ]       ", GREEN, BLACK, 12, 0); break;     // 无感
-        case 4: LCD_ShowString(50, 45, (uint8_t *)"[PREPOS]     ", GREEN, BLACK, 12, 0); break;
+        case MOTOR_MODE_STOP:       LCD_ShowString(50, 45, (uint8_t *)"[STOP]       ", WHITE, BLACK, 12, 0); break;
+        case MOTOR_MODE_SENSOR:     LCD_ShowString(50, 45, (uint8_t *)"[SENSOR]     ", GREEN, BLACK, 12, 0); break;
+        case MOTOR_MODE_SENSORLESS: LCD_ShowString(50, 45, (uint8_t *)"[SENSORLESS] ", GREEN, BLACK, 12, 0); break;
+        case MOTOR_MODE_VF:         LCD_ShowString(50, 45, (uint8_t *)"[ VF ]       ", GREEN, BLACK, 12, 0); break;
+        case MOTOR_MODE_PREPOS:     LCD_ShowString(50, 45, (uint8_t *)"[PREPOS]     ", GREEN, BLACK, 12, 0); break;
+        case MOTOR_MODE_PARAM_ID:   LCD_ShowString(50, 45, (uint8_t *)"[PARAM ID]   ", YELLOW, BLACK, 12, 0); break;
         default: LCD_ShowString(50, 45, (uint8_t *)"[ ?? ]      ", WHITE, BLACK, 12, 0); break;
     }
 
@@ -153,7 +155,8 @@ void Task_DEBUG(void)
     LCD_ShowFloatNum1(45, 78, Foc_observer.PLL_Err, 5, 3, YELLOW, BLACK, 12);
 
     // y=96: 估算速度 (Sensorless) 或 VF 角度 (VF)
-    if (motor.Control_Mode == 2 || motor.Control_Mode == 4) {
+    if (motor.Control_Mode == MOTOR_MODE_SENSORLESS ||
+        motor.Control_Mode == MOTOR_MODE_PREPOS) {
         LCD_ShowString(5, 96, (uint8_t *)"Est", WHITE, BLACK, 12, 0);
         LCD_ShowFloatNum1(45, 96, Foc_observer.speed_hz, 5, 1, BRRED, BLACK, 12);
     } else {

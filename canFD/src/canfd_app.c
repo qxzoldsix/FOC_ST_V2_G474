@@ -1,4 +1,5 @@
 #include "canfd_app.h"
+#include <string.h>
 
 /* ========== SDO 寄存器读写表 ========== */
 typedef struct {
@@ -11,12 +12,20 @@ typedef struct {
 /* 前向声明：寄存器读写实现 */
 static int8_t SDO_ReadRegister(SDO_Register reg, uint32_t *value);
 static int8_t SDO_WriteRegister(SDO_Register reg, uint32_t value);
+static void CANFD_ProcessRxMessage(const FDCAN_RxHeaderTypeDef *header,
+                                   const uint8_t *data);
 
 /* ========== 模块内部变量 ========== */
 static uint8_t canfd_node_state = NODE_STATE_OPERATIONAL;
 uint32_t canfd_rx_cnt = 0;
 uint32_t canfd_tx_cnt = 0;
 uint32_t canfd_err_cnt = 0;
+static const char canfd_sw_version_text[] = CANFD_SW_VERSION_TEXT;
+
+const char *CANFD_GetSoftwareVersionText(void)
+{
+    return canfd_sw_version_text;
+}
 
 /* ========== SDO 寄存器写权限过滤 ========== */
 static uint8_t SDO_IsReadOnly(SDO_Register reg)
@@ -58,7 +67,7 @@ static int8_t SDO_ReadRegister(SDO_Register reg, uint32_t *value)
         case REG_VF_FREQ_MAX:   *value = *(uint32_t*)&(float){VF_FREQ_MAX};        break;
         case REG_VF_RAMP_GRAD:  *value = *(uint32_t*)&(float){VF_RAMP_GRAD_DEF};   break;
         case REG_DEVICE_ID:     *value = 0x20260718; break;
-        case REG_SW_VERSION:    *value = 0x00010000; break;  // v1.0.0
+        case REG_SW_VERSION:    *value = CANFD_SW_VERSION_CODE; break;
         case REG_NODE_ID:       *value = CANFD_NODE_ID; break;
         default: return -1;
     }
@@ -110,6 +119,16 @@ static uint32_t CANFD_BytesToDLC(uint32_t bytes)
     if (bytes <= 32) return FDCAN_DLC_BYTES_32;     // DLC 13
     if (bytes <= 48) return FDCAN_DLC_BYTES_48;     // DLC 14
     return FDCAN_DLC_BYTES_64;                       // DLC 15
+}
+
+/* ========== DLC 码 -> 实际接收字节数 ========== */
+static uint32_t CANFD_DLCToBytes(uint32_t dlc)
+{
+    static const uint8_t dlc_to_bytes[16] = {
+        0, 1, 2, 3, 4, 5, 6, 7, 8, 12, 16, 20, 24, 32, 48, 64
+    };
+
+    return (dlc < 16U) ? dlc_to_bytes[dlc] : 0U;
 }
 
 /* ========== 发送 CAN FD 消息 ========== */
@@ -244,50 +263,97 @@ static void CANFD_ProcessSDO(uint8_t *data, uint32_t len)
     }
 }
 
-/* ========== FDCAN 接收回调（重写 HAL 弱函数） ========== */
-void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo0ITs)
+/* ========== 处理一条已接收报文 ========== */
+static void CANFD_ProcessRxMessage(const FDCAN_RxHeaderTypeDef *header,
+                                   const uint8_t *data)
 {
-    if ((RxFifo0ITs & FDCAN_IT_RX_FIFO0_NEW_MESSAGE) == 0) return;
+    uint32_t id;
+    uint32_t len;
 
-    FDCAN_RxHeaderTypeDef rxHeader;
-    uint8_t rxData[64];
-
-    if (HAL_FDCAN_GetRxMessage(hfdcan, FDCAN_RX_FIFO0, &rxHeader, rxData) != HAL_OK) {
-        canfd_err_cnt++;
+    if (header->IdType != FDCAN_STANDARD_ID ||
+        header->RxFrameType != FDCAN_DATA_FRAME) {
         return;
     }
 
-    canfd_rx_cnt++;
-    uint32_t id = rxHeader.Identifier;
+    id = header->Identifier;
+    len = CANFD_DLCToBytes(header->DataLength);
 
     /* NMT */
-    if (id == COB_NMT && rxHeader.DataLength >= 2) {
-        uint8_t cmd  = rxData[0];
-        uint8_t node = rxData[1];
+    if (id == COB_NMT && len >= 2U) {
+        uint8_t cmd  = data[0];
+        uint8_t node = data[1];
         if (node == 0 || node == CANFD_NODE_ID) {
+            if (cmd == NMT_START) {
+                canfd_node_state = NODE_STATE_OPERATIONAL;
+            } else if (cmd == NMT_STOP) {
+                canfd_node_state = NODE_STATE_STOPPED;
+            } else if (cmd == NMT_PRE_OP) {
+                canfd_node_state = NODE_STATE_PRE_OP;
+            }
             CANFD_OnNMT(cmd);
         }
         return;
     }
 
-    /* PDO1 RX: 控制指令 */
-    if (id == COB_PDO1_RX && rxHeader.DataLength >= sizeof(PDO1_RX_Data)) {
-        PDO1_RX_Data *pdo = (PDO1_RX_Data*)rxData;
-        CANFD_OnPDO1_RX(pdo);
+    /*
+     * PDO1 RX: STOP/QUICK_STOP/FAULT_CLEAR 只需命令字节；START 必须带齐
+     * mode + float。停止命令在任何 NMT 状态下都接受，以保证安全。
+     */
+    if (id == COB_PDO1_RX && len >= 1U) {
+        PDO1_RX_Data pdo = {0};
+        uint8_t cmd = data[0];
+
+        if (cmd == CTRL_START) {
+            if (canfd_node_state != NODE_STATE_OPERATIONAL ||
+                len < sizeof(PDO1_RX_Data)) {
+                return;
+            }
+            memcpy(&pdo, data, sizeof(pdo));
+        } else if (cmd == CTRL_STOP || cmd == CTRL_QUICK_STOP ||
+                   cmd == CTRL_FAULT_CLEAR) {
+            pdo.Command = cmd;
+        } else {
+            return;
+        }
+
+        CANFD_OnPDO1_RX(&pdo);
         return;
     }
 
     /* PDO2 RX: 扩展指令 */
-    if (id == COB_PDO2_RX && rxHeader.DataLength >= sizeof(PDO2_RX_Data)) {
-        PDO2_RX_Data *pdo = (PDO2_RX_Data*)rxData;
-        CANFD_OnPDO2_RX(pdo);
+    if (id == COB_PDO2_RX && canfd_node_state == NODE_STATE_OPERATIONAL &&
+        len >= sizeof(PDO2_RX_Data)) {
+        PDO2_RX_Data pdo;
+        memcpy(&pdo, data, sizeof(pdo));
+        CANFD_OnPDO2_RX(&pdo);
         return;
     }
 
     /* SDO */
     if (id == COB_SDO_RX) {
-        CANFD_ProcessSDO(rxData, rxHeader.DataLength);
+        CANFD_ProcessSDO((uint8_t *)data, len);
         return;
+    }
+}
+
+/* ========== FDCAN 接收回调（重写 HAL 弱函数） ========== */
+void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo0ITs)
+{
+    if ((RxFifo0ITs & FDCAN_IT_RX_FIFO0_NEW_MESSAGE) == 0U) return;
+
+    /* 一次中断排空 FIFO，避免连续控制帧到达时只处理第一条。 */
+    while (HAL_FDCAN_GetRxFifoFillLevel(hfdcan, FDCAN_RX_FIFO0) > 0U) {
+        FDCAN_RxHeaderTypeDef rx_header;
+        uint8_t rx_data[64] = {0};
+
+        if (HAL_FDCAN_GetRxMessage(hfdcan, FDCAN_RX_FIFO0,
+                                   &rx_header, rx_data) != HAL_OK) {
+            canfd_err_cnt++;
+            break;
+        }
+
+        canfd_rx_cnt++;
+        CANFD_ProcessRxMessage(&rx_header, rx_data);
     }
 }
 

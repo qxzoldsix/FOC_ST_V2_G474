@@ -199,5 +199,5 @@ static void id_ls_calc(void)
 
     pid.done = 1;
     pid.step = ID_STEP_DONE;
-    motor.Control_Mode = 0;  // 辨识完成, 回停机
+    Motor_ControlStop();
 }

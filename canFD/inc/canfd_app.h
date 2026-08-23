@@ -5,6 +5,8 @@
 
 /* ========== 节点配置 ========== */
 #define CANFD_NODE_ID       0x01
+#define CANFD_SW_VERSION_CODE  0x0260823AUL
+#define CANFD_SW_VERSION_TEXT  "260823A"
 
 /* ========== CAN ID (11-bit) ========== */
 #define COB_NMT             0x000           // 网络管理
@@ -64,13 +66,11 @@ typedef struct {
     float    V_q;             // [29:32] Vq电压
 } PDO1_TX_Data;
 
-/* ========== PDO1 RX: 控制指令 (12字节) ========== */
+/* ========== PDO1 RX: 控制指令 (6字节, 适配经典CAN ≤8字节) ========== */
 typedef struct {
-    float    TargetSpeedRPM;  // [0:3]   目标转速
-    float    TargetHz;        // [4:7]   目标频率(VF用)
-    uint8_t  Control_Mode;    // [8]     控制模式
-    uint8_t  Command;         // [9]     控制命令
-    uint16_t Reserved;        // [10:11] 保留
+    uint8_t  Command;         // [0]     控制命令 (CTRL_START/STOP/...)
+    uint8_t  Control_Mode;    // [1]     控制模式 (0:停止 2:无感FOC 3:VF 4:PREPOS)
+    float    TargetSpeedRPM;  // [2:5]   目标转速 RPM (闭环FOC用; VF模式自动换算TargetHz)
 } PDO1_RX_Data;
 
 /* ========== PDO2 TX: 扩展数据 (24字节) ========== */
@@ -130,6 +130,7 @@ int8_t CANFD_PDO1_TX_Send(void);
 int8_t CANFD_PDO2_TX_Send(void);
 int8_t CANFD_Heartbeat_Send(void);
 int8_t CANFD_EMCY_Send(uint16_t fault_code);
+const char *CANFD_GetSoftwareVersionText(void);
 
 /* 用户需要在应用层实现的回调 */
 extern void CANFD_OnNMT(uint8_t cmd);

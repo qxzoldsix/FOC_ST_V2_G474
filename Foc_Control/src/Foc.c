@@ -100,25 +100,29 @@ void Speed_FOC(void){
  */
 void Idq_FOC(void)
 {
-    float Us_Limit = 0;
+    float bus_pu;
+    float voltage_limit;
+    float q_voltage_limit;
+
+    bus_pu = Volt_CurrPara.BUS_Voltage / NOMINAL_BUS_VOLTAGE;
+    voltage_limit = Limit_Sat(bus_pu, FOC_VOLTAGE_PU_MAX, 0.0f);
 
     /* ---------- d 轴电流环 ---------- */
+    pi_id.Umax = voltage_limit;
+    pi_id.Umin = -voltage_limit;
     pi_id.Ref = I_d_GXieLv.XieLv_Y;                     // d 轴电流给定
     pi_id.Fbk = PARK_PCurr.Ds;                          // d 轴电流反馈
     PID_controller((p_PI_Control)&pi_id);               // d 轴 PI
     pi_id.OutF = pi_id.OutF * GM_Low_Lass_A + pi_id.Out * GM_Low_Lass_B;  // 低通滤波
     motor.V_d = pi_id.OutF;                             // d 轴电压输出
 
-    /* ---------- q 轴电压限幅（电压圆约束）----------
-     * Vd/Vq 是 per-unit, Bus_Voltage 是实际 V, 统一到 per-unit
-     */
+    /* q 轴使用 d 轴剩余的电压裕量，保证 sqrt(Vd²+Vq²) 不越界。 */
     {
-        float bus_pu = Volt_CurrPara.BUS_Voltage / NOMINAL_BUS_VOLTAGE;
-        float val = bus_pu * bus_pu - motor.V_d * motor.V_d;
-        Us_Limit = (val > 0.0f) ? sqrtf(val) : 0.0f;
+        float remaining = voltage_limit * voltage_limit - motor.V_d * motor.V_d;
+        q_voltage_limit = (remaining > 0.0f) ? sqrtf(remaining) : 0.0f;
     }
-    pi_iq.Umax =  Us_Limit;
-    pi_iq.Umin = -Us_Limit;
+    pi_iq.Umax = q_voltage_limit;
+    pi_iq.Umin = -q_voltage_limit;
 
     /* ---------- q 轴电流环 ---------- */
     pi_iq.Ref = I_q_GXieLv.XieLv_Y;                     // q 轴电流给定

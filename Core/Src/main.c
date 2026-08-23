@@ -106,7 +106,6 @@ int main(void)
 	
 	key_driver_init();
 	Task_Manage_List_Init();
-	HAL_TIM_Base_Start_IT(&htim1);
 
   HAL_ADCEx_Calibration_Start(&hadc1, ADC_SINGLE_ENDED);
   HAL_ADCEx_Calibration_Start(&hadc2, ADC_SINGLE_ENDED);
@@ -116,11 +115,14 @@ int main(void)
   HAL_ADC_Start_DMA(&hadc1, (uint32_t *)adc1_buff, 2);
   HAL_ADC_Start_DMA(&hadc2, (uint32_t *)adc2_buff, 4);
 
-	Foc_Pwm_Start();
+	/* CH4 保持 ADC 采样触发，三相桥上电默认封波，等待有效控制命令。 */
+	if (Foc_Pwm_Init() == 0U) {
+		Error_Handler();
+	}
 	PMSM_init();
-	InvProtect_Enable();
 	Flux_Observer_Init();
-	PI_Init();  // 初始化速度环/电流环 PI 参数 
+	PI_Init();
+	InvProtect_Enable();
  /* USER CODE END 2 */
 	while(1)
   {

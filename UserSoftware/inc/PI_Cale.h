@@ -44,4 +44,5 @@ extern  PI_controller   pi_spd ;
 extern  PI_controller   pi_id ;
 extern  PI_controller   pi_iq ;
 void PID_controller(p_PI_Control  pV);
+void PI_ResetRuntime(p_PI_Control pV);
 #endif
