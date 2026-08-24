@@ -33,6 +33,10 @@ static uint8_t SDO_IsReadOnly(SDO_Register reg)
     switch (reg) {
         case REG_DEVICE_ID:
         case REG_SW_VERSION:
+        case REG_PARAM_ID_STATE:
+        case REG_PARAM_ID_RS:
+        case REG_PARAM_ID_LD:
+        case REG_PARAM_ID_LQ:
             return 1;
         default:
             return 0;
@@ -69,6 +73,16 @@ static int8_t SDO_ReadRegister(SDO_Register reg, uint32_t *value)
         case REG_DEVICE_ID:     *value = 0x20260718; break;
         case REG_SW_VERSION:    *value = CANFD_SW_VERSION_CODE; break;
         case REG_NODE_ID:       *value = CANFD_NODE_ID; break;
+        case REG_PARAM_ID_STATE:
+            /* 小端返回后Byte4~7正好依次为step/error/done/valid。 */
+            *value = (uint32_t)pid.step |
+                     ((uint32_t)pid.error << 8U) |
+                     ((uint32_t)pid.done << 16U) |
+                     ((uint32_t)pid.valid << 24U);
+            break;
+        case REG_PARAM_ID_RS:    *value = *(uint32_t*)&pid.Rs; break;
+        case REG_PARAM_ID_LD:    *value = *(uint32_t*)&pid.Ld; break;
+        case REG_PARAM_ID_LQ:    *value = *(uint32_t*)&pid.Lq; break;
         default: return -1;
     }
     return 0;

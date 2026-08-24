@@ -121,6 +121,10 @@ typedef enum {
     REG_DEVICE_ID     = 0x1000,  // 只读: 设备ID
     REG_SW_VERSION    = 0x1001,  // 只读: 软件版本
     REG_NODE_ID       = 0x1002,  // 节点ID
+    REG_PARAM_ID_STATE = 0x1010, // 只读: step/error/done/valid
+    REG_PARAM_ID_RS    = 0x1011, // 只读: Rs (ohm, float)
+    REG_PARAM_ID_LD    = 0x1012, // 只读: Ld (H, float)
+    REG_PARAM_ID_LQ    = 0x1013, // 只读: Lq (H, float)
 } SDO_Register;
 
 /* ========== API ========== */

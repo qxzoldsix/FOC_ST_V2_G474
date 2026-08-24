@@ -11,7 +11,15 @@ ADCSample ADCSampPara = ADCSamp_DEFAULTS;
 #define SPEED_RAMP_RPM_PER_SECOND    1000.0f
 #define SPEED_RAMP_STEP_RPM          (SPEED_RAMP_RPM_PER_SECOND * VF_TS)
 
-static uint8_t Motor_ModeIsRunning(uint8_t mode)
+typedef struct {
+    MotorControlMode active_mode;
+} MotorStateMachine;
+
+static MotorStateMachine motor_sm = {
+    .active_mode = MOTOR_MODE_STOP
+};
+
+static uint8_t Motor_ModeIsSupported(MotorControlMode mode)
 {
     return (uint8_t)(mode == MOTOR_MODE_SENSORLESS ||
                      mode == MOTOR_MODE_VF ||
@@ -19,12 +27,20 @@ static uint8_t Motor_ModeIsRunning(uint8_t mode)
                      mode == MOTOR_MODE_PARAM_ID);
 }
 
-static uint8_t Motor_ModeIsClosedLoop(uint8_t mode)
+static uint8_t Motor_ModeCanStartExternally(MotorControlMode mode)
+{
+    return (uint8_t)(mode == MOTOR_MODE_SENSORLESS ||
+                     mode == MOTOR_MODE_VF ||
+                     mode == MOTOR_MODE_PREPOS ||
+                     mode == MOTOR_MODE_PARAM_ID);
+}
+
+static uint8_t Motor_ModeIsClosedLoop(MotorControlMode mode)
 {
     return (uint8_t)(mode == MOTOR_MODE_SENSORLESS);
 }
 
-static uint8_t Motor_ModeIsVfFamily(uint8_t mode)
+static uint8_t Motor_ModeIsVfFamily(MotorControlMode mode)
 {
     return (uint8_t)(mode == MOTOR_MODE_VF || mode == MOTOR_MODE_PREPOS);
 }
@@ -72,14 +88,50 @@ static void Motor_ResetStoppedRuntime(void)
     Svpwm_dq.SVPTc = 0U;
 }
 
-static uint8_t Motor_HandleModeTransition(uint8_t previous_mode, uint8_t next_mode)
+static void Motor_PrepareClosedLoop(MotorControlMode previous_mode)
 {
-    if (next_mode == MOTOR_MODE_STOP) {
-        Foc_Pwm_Stop();
+    if (!Motor_ModeIsClosedLoop(previous_mode)) {
+        Motor_ResetClosedLoopRuntime();
+        SpeedRpm_GXieLv.XieLv_Y = motor.SpeedRPM;
+    }
+}
+
+static void Motor_PrepareVfFamily(MotorControlMode previous_mode)
+{
+    if (!Motor_ModeIsVfFamily(previous_mode)) {
+        VF_HzRamp.XieLv_Y = motor.CurrentHz;
+        VF_HzRamp.XieLv_X = motor.TargetHz;
+
+        if (Motor_ModeIsClosedLoop(previous_mode)) {
+            motor.OpenTheta = Foc_observer.Theta;
+        }
+    }
+}
+
+static void Motor_PreparePreposition(void)
+{
+    float pll_step = 2.0f * PI * motor.CurrentHz * Foc_observer.Ctrl_ts;
+
+    Foc_observer.Theta = motor.OpenTheta;
+    Foc_observer.PLL_Ui = pll_step;
+    Foc_observer.PLL_Interg = pll_step;
+    Foc_observer.PLL_Err = 0.0f;
+}
+
+static uint8_t Motor_EnterMode(MotorControlMode next_mode)
+{
+    MotorControlMode previous_mode = motor_sm.active_mode;
+
+    if (next_mode == previous_mode) {
         return 1U;
     }
 
-    if (!Motor_ModeIsRunning(next_mode)) {
+    if (next_mode == MOTOR_MODE_STOP) {
+        Motor_ControlStop();
+        return 1U;
+    }
+
+    if (!Motor_ModeIsSupported(next_mode)) {
         Motor_ControlStop();
         return 0U;
     }
@@ -95,22 +147,93 @@ static uint8_t Motor_HandleModeTransition(uint8_t previous_mode, uint8_t next_mo
         return 0U;
     }
 
-    if (Motor_ModeIsClosedLoop(next_mode) &&
-        !Motor_ModeIsClosedLoop(previous_mode)) {
-        Motor_ResetClosedLoopRuntime();
-        SpeedRpm_GXieLv.XieLv_Y = motor.SpeedRPM;
+    if (Motor_ModeIsClosedLoop(next_mode)) {
+        Motor_PrepareClosedLoop(previous_mode);
     }
 
-    if (Motor_ModeIsVfFamily(next_mode) &&
-        !Motor_ModeIsVfFamily(previous_mode)) {
-        VF_HzRamp.XieLv_Y = motor.CurrentHz;
-        VF_HzRamp.XieLv_X = motor.TargetHz;
-        if (Motor_ModeIsClosedLoop(previous_mode)) {
-            motor.OpenTheta = Foc_observer.Theta;
-        }
+    if (Motor_ModeIsVfFamily(next_mode)) {
+        Motor_PrepareVfFamily(previous_mode);
     }
 
+    if (next_mode == MOTOR_MODE_PREPOS) {
+        Motor_PreparePreposition();
+    } else if (next_mode == MOTOR_MODE_PARAM_ID) {
+        /* PWM已以零占空比安全开启，辨识状态机从定位阶段开始接管输出。 */
+        ParamId_Start();
+    }
+
+    motor_sm.active_mode = next_mode;
     return 1U;
+}
+
+static void Motor_RunSensorless(void)
+{
+    Angel_Get();
+    UVW_Axis_DQ();
+    Speed_FOC();
+    Idq_FOC();
+    FOC_Svpwm_dq();
+}
+
+static void Motor_RunPreposition(void)
+{
+    float pll_step;
+
+    VF_Control_Run(&motor);
+    pll_step = 2.0f * PI * motor.CurrentHz * Foc_observer.Ctrl_ts;
+
+    /* VF 提供速度前馈，观测器在后台修正角度。 */
+    Foc_observer.PLL_Interg = pll_step;
+
+    CLARKE_PCurr.Us = Volt_CurrPara.PhaseU_Curr;
+#if CURRENT_USE_W_AS_V
+    CLARKE_PCurr.Vs = Volt_CurrPara.PhaseW_Curr;
+#else
+    CLARKE_PCurr.Vs = Volt_CurrPara.PhaseV_Curr;
+#endif
+    CLARKE_Cale((p_CLARKE)&CLARKE_PCurr);
+    Observer_Run();
+
+    /* 保持速度估计跟随 VF，供切入闭环时无扰接管。 */
+    Foc_observer.PLL_Interg = pll_step;
+    Foc_observer.speed_hz = motor.CurrentHz;
+    motor.IQAngle = (int16_t)((uint16_t)(651.8986f *
+                          Foc_observer.Theta) & 0x0FFFU);
+    motor.SpeedRPM = motor.CurrentHz * 60.0f / (MOTOR_POLES / 2.0f);
+
+    /* VF 继续驱动 PWM，同时刷新 Id/Iq 诊断量。 */
+    UVW_Axis_DQ();
+}
+
+static void Motor_RunActiveMode(void)
+{
+    switch (motor_sm.active_mode) {
+        case MOTOR_MODE_STOP:
+            break;
+
+        case MOTOR_MODE_SENSORLESS:
+            Motor_RunSensorless();
+            break;
+
+        case MOTOR_MODE_VF:
+            VF_Control_Run(&motor);
+            break;
+
+        case MOTOR_MODE_PREPOS:
+            Motor_RunPreposition();
+            break;
+
+        case MOTOR_MODE_PARAM_ID:
+            /* 完成或失败时ParamId_Run内部调用统一停机，结果保留在pid中。 */
+            ParamId_Run();
+            break;
+
+        case MOTOR_MODE_SENSOR:
+        default:
+            /* SENSOR 尚无角度源，任何非法内部状态都按故障安全方式停机。 */
+            Motor_ControlStop();
+            break;
+    }
 }
 
 /**
@@ -120,6 +243,8 @@ static uint8_t Motor_HandleModeTransition(uint8_t previous_mode, uint8_t next_mo
 void PMSM_init(void)
 {
     ZeroCurrOffset_Calibration();
+    motor.Control_Mode = MOTOR_MODE_STOP;
+    motor_sm.active_mode = MOTOR_MODE_STOP;
     Motor_ResetStoppedRuntime();
     SpeedRpm_GXieLv.XieLv_Grad = SPEED_RAMP_STEP_RPM;
 }
@@ -140,110 +265,28 @@ _RAM_FUNC void HAL_ADCEx_InjectedConvCpltCallback(ADC_HandleTypeDef *hadc)
 }
 
 /**
- * FOC 控制状态机
- * 根据 motor.Control_Mode 切换：
- *   0: 停机
- *   1: 有感 FOC（角度来自霍尔/编码器）
- *   2: 无感 FOC（角度来自磁链观测器 + PLL）
- *   3: VF 开环压频控制
- *   4: PREPOS VF 驱动 + 观测器后台预热
+ * FOC 控制状态机：保护检查 -> 模式切换 -> 输出状态确认 -> 当前模式运行
  */
 void Foc_Control(void)
 {
-    static uint8_t prev_mode = 0xFF;  // 上一周期模式（用于检测模式切换边沿）
-    uint8_t current_mode;
-    uint8_t mode_just_entered;
+    MotorControlMode requested_mode;
 
     InvProtect_Check();
+    requested_mode = (MotorControlMode)motor.Control_Mode;
 
-    current_mode = motor.Control_Mode;
-    mode_just_entered = (uint8_t)(current_mode != prev_mode);
-    if (mode_just_entered) {
-        if (Motor_HandleModeTransition(prev_mode, current_mode) == 0U) {
-            prev_mode = motor.Control_Mode;
-            return;
-        }
-        current_mode = motor.Control_Mode;
-        prev_mode = current_mode;
-    }
-
-    if (current_mode != MOTOR_MODE_STOP && Foc_Pwm_IsEnabled() == 0U) {
-        Motor_ControlStop();
-        prev_mode = MOTOR_MODE_STOP;
+    if (requested_mode != motor_sm.active_mode &&
+        Motor_EnterMode(requested_mode) == 0U) {
         return;
     }
 
-    switch (current_mode)
-    {
-        case MOTOR_MODE_STOP:
-            break;
-
-        case MOTOR_MODE_SENSOR:
-            /* 当前未接入传感器角度源；模式切换检查会在到达这里前停机。 */
-            Motor_ControlStop();
-            prev_mode = MOTOR_MODE_STOP;
-            break;
-
-        case MOTOR_MODE_SENSORLESS:
-            Angel_Get();
-            UVW_Axis_DQ();
-            Speed_FOC();
-            Idq_FOC();
-            FOC_Svpwm_dq();
-            break;
-
-        case MOTOR_MODE_VF:
-            VF_Control_Run(&motor);
-            break;
-
-        case MOTOR_MODE_PREPOS:
-            {
-                float pll_step;
-
-                VF_Control_Run(&motor);
-                pll_step = 2.0f * PI * motor.CurrentHz * Foc_observer.Ctrl_ts;
-
-                if (mode_just_entered) {
-                    Foc_observer.Theta = motor.OpenTheta;
-                    Foc_observer.PLL_Ui = pll_step;
-                    Foc_observer.PLL_Err = 0.0f;
-                }
-
-                /* VF 提供速度前馈，观测器只负责修正角度。 */
-                Foc_observer.PLL_Interg = pll_step;
-
-                /* 后台跑观测器: Clarke 获取 Iαβ + 观测器更新磁链/PLL */
-                CLARKE_PCurr.Us = Volt_CurrPara.PhaseU_Curr;
-#if CURRENT_USE_W_AS_V
-                CLARKE_PCurr.Vs = Volt_CurrPara.PhaseW_Curr;
-#else
-                CLARKE_PCurr.Vs = Volt_CurrPara.PhaseV_Curr;
-#endif
-                CLARKE_Cale((p_CLARKE)&CLARKE_PCurr);
-                Observer_Run();
-
-                /* 保持速度估计跟随 VF，供切闭环时无扰接管。 */
-                Foc_observer.PLL_Interg = pll_step;
-                Foc_observer.speed_hz = motor.CurrentHz;
-                motor.IQAngle = (int16_t)((uint16_t)(651.8986f *
-                                      Foc_observer.Theta) & 0x0FFFU);
-                motor.SpeedRPM = motor.CurrentHz * 60.0f / (MOTOR_POLES / 2.0f);
-
-                /* VF 仍驱动 PWM，但同步更新 Id/Iq 供诊断和闭环接管。 */
-                UVW_Axis_DQ();
-            }
-            break;
-
-        case MOTOR_MODE_PARAM_ID:
-            if (mode_just_entered) ParamId_Start();
-            ParamId_Run();
-            break;
-
-        default:
-            Motor_ControlStop();
-            prev_mode = MOTOR_MODE_STOP;
-            break;
+    if (motor_sm.active_mode != MOTOR_MODE_STOP &&
+        Foc_Pwm_IsEnabled() == 0U) {
+        /* 运行中丢失 MOE 时不自动恢复，必须重新下发启动命令。 */
+        Motor_ControlStop();
+        return;
     }
+
+    Motor_RunActiveMode();
 }
 
 /**
@@ -252,15 +295,21 @@ void Foc_Control(void)
  */
 uint8_t Motor_ControlStart(uint8_t mode, float target_speed_rpm)
 {
+    MotorControlMode requested_mode = (MotorControlMode)mode;
     float target_hz;
 
     /* 使用最新采样值复查保护，避免故障清除与再次启动之间的窗口。 */
     InvProtect_Check();
 
     /* SENSOR 尚未接入角度源，禁止通过外部命令使能功率级。 */
-    if (mode < MOTOR_MODE_SENSORLESS || mode > MOTOR_MODE_PREPOS ||
+    if (!Motor_ModeCanStartExternally(requested_mode) ||
         !isfinite(target_speed_rpm) || target_speed_rpm < 0.0f ||
         InvProtect_GetFault() != FAULT_NONE) {
+        return 0U;
+    }
+
+    /* 参数辨识必须静止执行，启动帧的目标转速必须为 0。 */
+    if (requested_mode == MOTOR_MODE_PARAM_ID && target_speed_rpm != 0.0f) {
         return 0U;
     }
 
@@ -269,7 +318,7 @@ uint8_t Motor_ControlStart(uint8_t mode, float target_speed_rpm)
         return 0U;
     }
 
-    if ((mode == MOTOR_MODE_VF || mode == MOTOR_MODE_PREPOS) &&
+    if (Motor_ModeIsVfFamily(requested_mode) &&
         (motor.TargetVolt <= VF_VOLTAGE_MIN ||
          motor.TargetVolt > VF_VOLTAGE_MAX)) {
         return 0U;
@@ -282,7 +331,7 @@ uint8_t Motor_ControlStart(uint8_t mode, float target_speed_rpm)
     SpeedRpm_GXieLv.XieLv_X = target_speed_rpm;
     motor.TargetHz = target_hz;
     /* 最后写模式，确保 20 kHz 控制中断只看到完整的新命令。 */
-    motor.Control_Mode = mode;
+    motor.Control_Mode = (uint8_t)requested_mode;
     return 1U;
 }
 
@@ -293,6 +342,7 @@ void Motor_ControlStop(void)
 {
     /* 先发布 STOP 状态，再立即封波；随后清控制器历史量。 */
     motor.Control_Mode = MOTOR_MODE_STOP;
+    motor_sm.active_mode = MOTOR_MODE_STOP;
     Foc_Pwm_Stop();
     Motor_ResetStoppedRuntime();
 }

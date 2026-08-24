@@ -116,10 +116,10 @@ START 使用 6 字节结构：
 | Byte | 类型 | 字段 | 当前规则 |
 |---:|---|---|---|
 | 0 | `uint8` | `Command` | START=`0x01` |
-| 1 | `uint8` | `Control_Mode` | 外部 START 当前接受 2~4 |
+| 1 | `uint8` | `Control_Mode` | 外部 START 当前接受 2~5 |
 | 2~5 | `float32 LE` | `TargetSpeedRPM` | 必须有限且 `>=0` |
 
-模式：0=STOP，1=SENSOR，2=SENSORLESS，3=VF，4=PREPOS，5=参数辨识。模式 1 尚未接入位置传感器，当前状态机和外部 START 都会拒绝它；模式 5 仅供内部参数辨识流程使用。
+模式：0=STOP，1=SENSOR，2=SENSORLESS，3=VF，4=PREPOS，5=参数辨识。模式 1 尚未接入位置传感器，当前状态机和外部 START 都会拒绝它；模式 5 要求目标转速严格为 0，并在完成或失败后自动封波停机。
 
 目标电频率按当前代码计算：
 
@@ -137,7 +137,7 @@ STOP、FAULT_CLEAR、QUICK_STOP 只需要 Byte0：
 | `02` | 清除可清除故障 | 无，任何状态接受 |
 | `04` | QUICK_STOP；当前实现与 STOP 相同 | 无，任何状态接受 |
 
-START 的接受条件全部满足才执行：节点为 OPERATIONAL、DLC≥6、模式 2~4、RPM 有限且非负、换算电频率不超过 400 Hz、当前无故障；VF/PREPOS 还要求 `0.01 < TargetVolt <= 0.95 pu`。拒绝时没有 CAN 应答。
+START 的接受条件全部满足才执行：节点为 OPERATIONAL、DLC≥6、模式 2~5、RPM 有限且非负、换算电频率不超过 400 Hz、当前无故障；VF/PREPOS 还要求 `0.01 < TargetVolt <= 0.95 pu`，参数辨识模式要求 RPM=0。拒绝时没有 CAN 应答。
 
 ### 5.3 PDO1 TX 状态：0x181，DLC 8
 
@@ -227,10 +227,23 @@ START 的接受条件全部满足才执行：节点为 OPERATIONAL、DLC≥6、�
 | `0x1000` | DEVICE_ID | `0x20260718` | 只读，写返回错误 |
 | `0x1001` | SW_VERSION | `0x0260823A`（版本 `260823A`） | 只读，写返回错误 |
 | `0x1002` | NODE_ID | 原始整数 1 | 写返回成功但节点号不变 |
+| `0x1010` | PARAM_ID_STATE | Byte0=step，Byte1=error，Byte2=done，Byte3=valid | 只读 |
+| `0x1011` | PARAM_ID_RS | `pid.Rs`，float，单位 Ω | 只读候选值 |
+| `0x1012` | PARAM_ID_LD | `pid.Ld`，float，单位 H | 只读候选值 |
+| `0x1013` | PARAM_ID_LQ | `pid.Lq`，float，单位 H | 只读候选值 |
 
 PCAN-View 读取版本：发送 `601#40 01 10 00 00 00 00 00`，正常响应为
 `581#43 01 10 00 3A 82 60 02`，数据区 `3A 82 60 02` 按小端解释为
 `0x0260823A`，对应版本 `260823A`。
+
+参数辨识启动帧为 `201#01 05 00 00 00 00`。完成后读取 `0x1010`；仅当
+`done=1`、`valid=1`、`error=0` 时，`0x1011~0x1013` 才是通过软件范围校验的候选值。
+这些值不会自动覆盖观测器参数，必须先做低压、小电流台架复核。
+
+辨识 step：0=IDLE，1=ALIGN，2/3=Rs低平台稳定/采样，4/5=Rs高平台稳定/采样，
+6=Ld脉冲，7=Lq脉冲，8=VALIDATE，9=DONE，10=FAILED。
+error：0=无错误，1=母线异常，2=辨识电流超限，3/4=Rs响应/范围异常，
+5/6=Ld/Lq响应不足，7=电感范围异常，8=非法状态。
 
 错误码：不存在索引 `0x06020000`；只读 `0x06010002`。`0x06090030` 虽有定义，但当前没有范围校验路径会返回它。
 
