@@ -7,43 +7,26 @@
 
 TaskTime  TasksPare[Task_Num];
 /**
- * @brief  Vofa JustFloat 协议发送电机数据
- * @note   每帧 = 6个float(各4字节, little-endian) + 帧尾(00 00 80 7F)
- */
-
-/**
- * Vofa JustFloat 数据上报 (1ms / ~1kHz)
+ * @brief Vofa JustFloat 三相电流波形上报 (1ms / ~1kHz)
  *
- * CH1: CurrentHz      — 当前电频率 (Hz)
- * CH2: Id (Ds)        — d 轴电流反馈, Id=0 控制时 ≈ 0
- * CH3: Iq (Qs)        — q 轴电流反馈 (转矩电流)
- * CH4: Vd             — d 轴电压输出 (pu)
- * CH5: Vq             — q 轴电压输出 (pu)
- * CH6: BUS_Voltage    — 母线电压 (V)
- * CH7: PhaseU_Curr    — U 相电流 (A)
- * CH8: PhaseV_Curr    — V 相电流 (A)
- * CH9: PhaseW_Curr    — W 相电流 (A)
+ * CH1: PhaseU_Curr — U 相电流 (A)
+ * CH2: PhaseV_Curr — V 相电流 (A)
+ * CH3: PhaseW_Curr — W 相电流 (A)
+ * 每帧为3个little-endian float，随后是JustFloat帧尾 00 00 80 7F。
  */
 void HFPeriod_RUN(void)
 {
-    static uint8_t buf[40];   // 9 floats × 4 + 4 byte tail = 40
+    static uint8_t buf[16];
     float *p = (float *)buf;
 
-    p[0] = motor.CurrentHz;
-    p[1] = PARK_PCurr.Ds;
-    p[2] = PARK_PCurr.Qs;
-    p[3] = motor.V_d;
-    p[4] = motor.V_q;
-    p[5] = Volt_CurrPara.BUS_Voltage;
-    p[6] = Volt_CurrPara.PhaseU_Curr;
-    p[7] = Volt_CurrPara.PhaseV_Curr;
-    p[8] = Volt_CurrPara.PhaseW_Curr;
+    p[0] = Volt_CurrPara.PhaseU_Curr;
+    p[1] = Volt_CurrPara.PhaseV_Curr;
+    p[2] = Volt_CurrPara.PhaseW_Curr;
 
-    // JustFloat frame tail
-    buf[36] = 0x00;
-    buf[37] = 0x00;
-    buf[38] = 0x80;
-    buf[39] = 0x7F;
+    buf[12] = 0x00;
+    buf[13] = 0x00;
+    buf[14] = 0x80;
+    buf[15] = 0x7F;
 
     CDC_Transmit_FS(buf, sizeof(buf));
 }

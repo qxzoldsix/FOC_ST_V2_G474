@@ -5,8 +5,8 @@
 
 /* ========== 节点配置 ========== */
 #define CANFD_NODE_ID       0x01
-#define CANFD_SW_VERSION_CODE  0x0260823AUL
-#define CANFD_SW_VERSION_TEXT  "260823A"
+#define CANFD_SW_VERSION_CODE  0x0260830AUL
+#define CANFD_SW_VERSION_TEXT  "260830A"
 
 /* ========== CAN ID (11-bit) ========== */
 #define COB_NMT             0x000           // 网络管理
@@ -49,21 +49,16 @@
 /* ========== SDO 错误码 ========== */
 #define SDO_ERR_NO_INDEX    0x06020000
 #define SDO_ERR_READ_ONLY   0x06010002
+#define SDO_ERR_TYPE        0x06070010
 #define SDO_ERR_RANGE       0x06090030
 
-/* ========== PDO1 TX: 电机状态 (33字节, pack(1)) ========== */
+/* ========== PDO1 TX: 经典 CAN 电机状态 (8字节, pack(1)) ========== */
 #pragma pack(1)
 typedef struct {
-    float    SpeedRPM;        // [0:3]   实际转速
-    float    CurrentHz;       // [4:7]   当前电频率
-    float    V_amp;           // [8:11]  输出电压幅值
-    float    TargetHz;        // [12:15] 目标频率
-    float    TargetVolt;      // [16:19] 目标电压
-    uint16_t Fault_DTC;       // [20:21] 故障码（位掩码）
-    uint8_t  Control_Mode;    // [22]    控制模式
-    int16_t  IQAngle;         // [23:24] 电角度(0~4095)
-    float    V_d;             // [25:28] Vd电压
-    float    V_q;             // [29:32] Vq电压
+    float    SpeedRPM;        // [0:3] 实际转速 (RPM)
+    uint16_t Fault_DTC;       // [4:5] 故障位掩码
+    uint8_t  Control_Mode;    // [6]   当前控制模式
+    uint8_t  PwmEnabled;      // [7]   0=封波, 1=PWM已使能
 } PDO1_TX_Data;
 
 /* ========== PDO1 RX: 控制指令 (6字节, 适配经典CAN ≤8字节) ========== */

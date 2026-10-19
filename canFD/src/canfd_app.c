@@ -1,19 +1,70 @@
 #include "canfd_app.h"
+#include <math.h>
 #include <string.h>
 
-/* ========== SDO 寄存器读写表 ========== */
-typedef struct {
-    SDO_Register reg;
-    void        *ptr;
-    uint8_t      size;     // 1=u8, 2=u16, 4=float/u32
-    uint8_t      readonly; // 1=只读
-} SDO_RegEntry;
+/* ========== SDO 配置与辅助函数 ========== */
+/* 通信侧安全边界，不代表推荐的控制器整定值。 */
+#define SDO_SPEED_KP_MAX         1.0f
+#define SDO_SPEED_KI_MAX         0.1f
+#define SDO_CURRENT_KP_MAX       1.0f
+#define SDO_CURRENT_KI_MAX       0.1f
+#define SDO_SPEED_UMAX_MIN_A     0.1f
+#define SDO_SPEED_UMAX_MAX_A    12.0f
+#define SDO_PLL_KP_MAX        1000.0f
+#define SDO_PLL_KI_MAX         100.0f
+#define SDO_OBSERVER_GAIN_MAX 100000.0f
+#define SDO_VF_RAMP_GRAD_MIN      0.00001f
+#define SDO_VF_RAMP_GRAD_MAX      0.1f
+
+enum {
+    SDO_ACCESS_OK = 0,
+    SDO_ACCESS_NO_INDEX = -1,
+    SDO_ACCESS_READ_ONLY = -2,
+    SDO_ACCESS_RANGE = -3
+};
 
 /* 前向声明：寄存器读写实现 */
 static int8_t SDO_ReadRegister(SDO_Register reg, uint32_t *value);
 static int8_t SDO_WriteRegister(SDO_Register reg, uint32_t value);
 static void CANFD_ProcessRxMessage(const FDCAN_RxHeaderTypeDef *header,
                                    const uint8_t *data);
+
+static uint32_t SDO_FloatToRaw(float value)
+{
+    uint32_t raw;
+    memcpy(&raw, &value, sizeof(raw));
+    return raw;
+}
+
+static float SDO_RawToFloat(uint32_t raw)
+{
+    float value;
+    memcpy(&value, &raw, sizeof(value));
+    return value;
+}
+
+static uint8_t SDO_FloatInRange(float value, float min_value, float max_value)
+{
+    return (isfinite(value) && value >= min_value && value <= max_value) ? 1U : 0U;
+}
+
+static float SDO_Clamp(float value, float min_value, float max_value)
+{
+    if (value < min_value) return min_value;
+    if (value > max_value) return max_value;
+    return value;
+}
+
+static void SDO_SetPiLimit(PI_controller *pi, float limit)
+{
+    pi->Umax = limit;
+    pi->Umin = -limit;
+    pi->ui   = SDO_Clamp(pi->ui, pi->Umin, pi->Umax);
+    pi->i1   = SDO_Clamp(pi->i1, pi->Umin, pi->Umax);
+    pi->v1   = SDO_Clamp(pi->v1, pi->Umin, pi->Umax);
+    pi->Out  = SDO_Clamp(pi->Out, pi->Umin, pi->Umax);
+    pi->OutF = SDO_Clamp(pi->OutF, pi->Umin, pi->Umax);
+}
 
 /* ========== 模块内部变量 ========== */
 static uint8_t canfd_node_state = NODE_STATE_OPERATIONAL;
@@ -27,49 +78,33 @@ const char *CANFD_GetSoftwareVersionText(void)
     return canfd_sw_version_text;
 }
 
-/* ========== SDO 寄存器写权限过滤 ========== */
-static uint8_t SDO_IsReadOnly(SDO_Register reg)
-{
-    switch (reg) {
-        case REG_DEVICE_ID:
-        case REG_SW_VERSION:
-        case REG_PARAM_ID_STATE:
-        case REG_PARAM_ID_RS:
-        case REG_PARAM_ID_LD:
-        case REG_PARAM_ID_LQ:
-            return 1;
-        default:
-            return 0;
-    }
-}
-
 /* ========== SDO 读寄存器 ========== */
 static int8_t SDO_ReadRegister(SDO_Register reg, uint32_t *value)
 {
-    if (value == NULL) return -1;
+    if (value == NULL) return SDO_ACCESS_NO_INDEX;
 
     switch (reg) {
-        case REG_SPEED_KP:      *value = *(uint32_t*)&pi_spd.Kp;   break;
-        case REG_SPEED_KI:      *value = *(uint32_t*)&pi_spd.Ki;   break;
-        case REG_SPEED_UMAX:    *value = *(uint32_t*)&pi_spd.Umax; break;
-        case REG_ID_KP:         *value = *(uint32_t*)&pi_id.Kp;    break;
-        case REG_ID_KI:         *value = *(uint32_t*)&pi_id.Ki;    break;
-        case REG_ID_UMAX:       *value = *(uint32_t*)&pi_id.Umax;  break;
-        case REG_IQ_KP:         *value = *(uint32_t*)&pi_iq.Kp;    break;
-        case REG_IQ_KI:         *value = *(uint32_t*)&pi_iq.Ki;    break;
-        case REG_IQ_UMAX:       *value = *(uint32_t*)&pi_iq.Umax;  break;
-        case REG_PLL_KP:        *value = *(uint32_t*)&VF_HzRamp.XieLv_Y; break; // TODO: 替换为实际PLL变量
-        case REG_PLL_KI:        *value = *(uint32_t*)&VF_HzRamp.XieLv_X; break; // TODO: 替换为实际PLL变量
-        case REG_OBS_GAIN:      *value = 5000; break;  // TODO: 替换为实际观测器增益
-        case REG_OBS_BW:        *value = 50;   break;  // TODO: 替换为实际带宽
-        case REG_OC_THRESH:     *value = *(uint32_t*)&(float){OC_THRESHOLD_A};     break;
-        case REG_OV_THRESH:     *value = *(uint32_t*)&(float){OV_THRESHOLD_V};     break;
-        case REG_UV_THRESH:     *value = *(uint32_t*)&(float){UV_THRESHOLD_V};     break;
-        case REG_OC_BUS_THRESH: *value = *(uint32_t*)&(float){OC_BUS_THRESHOLD_A}; break;
-        case REG_OT_THRESH:     *value = 0; break;  // TODO
-        case REG_VF_VOLT_MAX:   *value = *(uint32_t*)&(float){VF_VOLTAGE_MAX};     break;
-        case REG_VF_FREQ_MAX:   *value = *(uint32_t*)&(float){VF_FREQ_MAX};        break;
-        case REG_VF_RAMP_GRAD:  *value = *(uint32_t*)&(float){VF_RAMP_GRAD_DEF};   break;
+        case REG_SPEED_KP:      *value = SDO_FloatToRaw(pi_spd.Kp); break;
+        case REG_SPEED_KI:      *value = SDO_FloatToRaw(pi_spd.Ki); break;
+        case REG_SPEED_UMAX:    *value = SDO_FloatToRaw(pi_spd.Umax); break;
+        case REG_ID_KP:         *value = SDO_FloatToRaw(pi_id.Kp); break;
+        case REG_ID_KI:         *value = SDO_FloatToRaw(pi_id.Ki); break;
+        case REG_ID_UMAX:       *value = SDO_FloatToRaw(pi_id.Umax); break;
+        case REG_IQ_KP:         *value = SDO_FloatToRaw(pi_iq.Kp); break;
+        case REG_IQ_KI:         *value = SDO_FloatToRaw(pi_iq.Ki); break;
+        case REG_IQ_UMAX:       *value = SDO_FloatToRaw(pi_iq.Umax); break;
+        case REG_PLL_KP:        *value = SDO_FloatToRaw(Foc_observer.PLL_kp); break;
+        case REG_PLL_KI:        *value = SDO_FloatToRaw(Foc_observer.PLL_ki); break;
+        case REG_OBS_GAIN:      *value = SDO_FloatToRaw(Foc_observer.Gain); break;
+        case REG_OBS_BW:        *value = SDO_FloatToRaw(Foc_observer.PLL_BW_Hz); break;
+        case REG_OC_THRESH:     *value = SDO_FloatToRaw(OC_THRESHOLD_A); break;
+        case REG_OV_THRESH:     *value = SDO_FloatToRaw(OV_THRESHOLD_V); break;
+        case REG_UV_THRESH:     *value = SDO_FloatToRaw(UV_THRESHOLD_V); break;
+        case REG_OC_BUS_THRESH: *value = SDO_FloatToRaw(OC_BUS_THRESHOLD_A); break;
+        case REG_OT_THRESH:     *value = SDO_FloatToRaw(NTC_OT_FAULT_C); break;
+        case REG_VF_VOLT_MAX:   *value = SDO_FloatToRaw(VF_VOLTAGE_MAX); break;
+        case REG_VF_FREQ_MAX:   *value = SDO_FloatToRaw(VF_FREQ_MAX); break;
+        case REG_VF_RAMP_GRAD:  *value = SDO_FloatToRaw(VF_HzRamp.XieLv_Grad); break;
         case REG_DEVICE_ID:     *value = 0x20260718; break;
         case REG_SW_VERSION:    *value = CANFD_SW_VERSION_CODE; break;
         case REG_NODE_ID:       *value = CANFD_NODE_ID; break;
@@ -80,46 +115,103 @@ static int8_t SDO_ReadRegister(SDO_Register reg, uint32_t *value)
                      ((uint32_t)pid.done << 16U) |
                      ((uint32_t)pid.valid << 24U);
             break;
-        case REG_PARAM_ID_RS:    *value = *(uint32_t*)&pid.Rs; break;
-        case REG_PARAM_ID_LD:    *value = *(uint32_t*)&pid.Ld; break;
-        case REG_PARAM_ID_LQ:    *value = *(uint32_t*)&pid.Lq; break;
-        default: return -1;
+        case REG_PARAM_ID_RS:    *value = SDO_FloatToRaw(pid.Rs); break;
+        case REG_PARAM_ID_LD:    *value = SDO_FloatToRaw(pid.Ld); break;
+        case REG_PARAM_ID_LQ:    *value = SDO_FloatToRaw(pid.Lq); break;
+        default: return SDO_ACCESS_NO_INDEX;
     }
-    return 0;
+    return SDO_ACCESS_OK;
 }
 
 /* ========== SDO 写寄存器 ========== */
 static int8_t SDO_WriteRegister(SDO_Register reg, uint32_t value)
 {
-    if (SDO_IsReadOnly(reg)) return -2;
+    float new_value = SDO_RawToFloat(value);
 
     switch (reg) {
-        case REG_SPEED_KP:      pi_spd.Kp   = *(float*)&value; break;
-        case REG_SPEED_KI:      pi_spd.Ki   = *(float*)&value; break;
-        case REG_SPEED_UMAX:    pi_spd.Umax = *(float*)&value; break;
-        case REG_ID_KP:         pi_id.Kp    = *(float*)&value; break;
-        case REG_ID_KI:         pi_id.Ki    = *(float*)&value; break;
-        case REG_ID_UMAX:       pi_id.Umax  = *(float*)&value; break;
-        case REG_IQ_KP:         pi_iq.Kp    = *(float*)&value; break;
-        case REG_IQ_KI:         pi_iq.Ki    = *(float*)&value; break;
-        case REG_IQ_UMAX:       pi_iq.Umax  = *(float*)&value; break;
-        case REG_PLL_KP:        VF_HzRamp.XieLv_Y = *(float*)&value; break; // TODO
-        case REG_PLL_KI:        VF_HzRamp.XieLv_X = *(float*)&value; break; // TODO
-        case REG_OC_THRESH:     // 当前为#define宏，暂存但不生效
+        case REG_SPEED_KP:
+            if (!SDO_FloatInRange(new_value, 0.0f, SDO_SPEED_KP_MAX))
+                return SDO_ACCESS_RANGE;
+            pi_spd.Kp = new_value;
+            break;
+        case REG_SPEED_KI:
+            if (!SDO_FloatInRange(new_value, 0.0f, SDO_SPEED_KI_MAX))
+                return SDO_ACCESS_RANGE;
+            pi_spd.Ki = new_value;
+            break;
+        case REG_SPEED_UMAX:
+            if (!SDO_FloatInRange(new_value, SDO_SPEED_UMAX_MIN_A,
+                                  SDO_SPEED_UMAX_MAX_A))
+                return SDO_ACCESS_RANGE;
+            SDO_SetPiLimit(&pi_spd, new_value);
+            break;
+        case REG_ID_KP:
+            if (!SDO_FloatInRange(new_value, 0.0f, SDO_CURRENT_KP_MAX))
+                return SDO_ACCESS_RANGE;
+            pi_id.Kp = new_value;
+            break;
+        case REG_ID_KI:
+            if (!SDO_FloatInRange(new_value, 0.0f, SDO_CURRENT_KI_MAX))
+                return SDO_ACCESS_RANGE;
+            pi_id.Ki = new_value;
+            break;
+        case REG_IQ_KP:
+            if (!SDO_FloatInRange(new_value, 0.0f, SDO_CURRENT_KP_MAX))
+                return SDO_ACCESS_RANGE;
+            pi_iq.Kp = new_value;
+            break;
+        case REG_IQ_KI:
+            if (!SDO_FloatInRange(new_value, 0.0f, SDO_CURRENT_KI_MAX))
+                return SDO_ACCESS_RANGE;
+            pi_iq.Ki = new_value;
+            break;
+        case REG_PLL_KP:
+            if (!SDO_FloatInRange(new_value, 0.0f, SDO_PLL_KP_MAX))
+                return SDO_ACCESS_RANGE;
+            Foc_observer.PLL_kp = new_value;
+            Foc_observer.PLL_kp_target = new_value;
+            break;
+        case REG_PLL_KI:
+            if (!SDO_FloatInRange(new_value, 0.0f, SDO_PLL_KI_MAX))
+                return SDO_ACCESS_RANGE;
+            Foc_observer.PLL_ki = new_value;
+            Foc_observer.PLL_ki_target = new_value;
+            break;
+        case REG_OBS_GAIN:
+            if (!SDO_FloatInRange(new_value, 0.0f, SDO_OBSERVER_GAIN_MAX))
+                return SDO_ACCESS_RANGE;
+            Foc_observer.Gain = new_value;
+            break;
+        case REG_VF_RAMP_GRAD:
+            if (!SDO_FloatInRange(new_value, SDO_VF_RAMP_GRAD_MIN,
+                                  SDO_VF_RAMP_GRAD_MAX))
+                return SDO_ACCESS_RANGE;
+            VF_HzRamp.XieLv_Grad = new_value;
+            break;
+
+        /* Constants, diagnostics, and dynamically managed limits are read-only. */
+        case REG_ID_UMAX:
+        case REG_IQ_UMAX:
+        case REG_OBS_BW:
+        case REG_OC_THRESH:
         case REG_OV_THRESH:
         case REG_UV_THRESH:
         case REG_OC_BUS_THRESH:
         case REG_OT_THRESH:
         case REG_VF_VOLT_MAX:
         case REG_VF_FREQ_MAX:
-        case REG_VF_RAMP_GRAD:
-        case REG_OBS_GAIN:      // TODO: 替换为实际变量
-        case REG_OBS_BW:        // TODO: 替换为实际变量
-            break;  // 接受写入但不改变#define（后续改成变量即可生效）
-        case REG_NODE_ID:       break; // 暂不支持运行时修改
-        default: return -1;
+        case REG_DEVICE_ID:
+        case REG_SW_VERSION:
+        case REG_NODE_ID:
+        case REG_PARAM_ID_STATE:
+        case REG_PARAM_ID_RS:
+        case REG_PARAM_ID_LD:
+        case REG_PARAM_ID_LQ:
+            return SDO_ACCESS_READ_ONLY;
+        default:
+            return SDO_ACCESS_NO_INDEX;
     }
-    return 0;
+    return SDO_ACCESS_OK;
 }
 
 /* ========== 字节数 → CAN FD DLC 码 ========== */
@@ -167,22 +259,46 @@ static int8_t CANFD_SendMessage(uint32_t id, uint8_t *data, uint32_t len, uint8_
     return 0;
 }
 
+static uint32_t SDO_AccessToAbortCode(int8_t result)
+{
+    if (result == SDO_ACCESS_READ_ONLY) return SDO_ERR_READ_ONLY;
+    if (result == SDO_ACCESS_RANGE) return SDO_ERR_RANGE;
+    return SDO_ERR_NO_INDEX;
+}
+
+static uint32_t SDO_LoadU32(const uint8_t *data)
+{
+    uint32_t value;
+    memcpy(&value, data, sizeof(value));
+    return value;
+}
+
+static void SDO_StoreU32(uint8_t *data, uint32_t value)
+{
+    memcpy(data, &value, sizeof(value));
+}
+
+static void SDO_SendAbort(const uint8_t *request, uint32_t abort_code)
+{
+    uint8_t response[8] = {0};
+    response[0] = SDO_ERROR;
+    response[1] = request[1];
+    response[2] = request[2];
+    response[3] = request[3];
+    SDO_StoreU32(&response[4], abort_code);
+    CANFD_SendMessage(COB_SDO_TX, response, sizeof(response), 0);
+}
+
 /* ========== 发送 PDO1: 电机状态 ========== */
 int8_t CANFD_PDO1_TX_Send(void)
 {
     PDO1_TX_Data pdo;
-    pdo.SpeedRPM    = motor.SpeedRPM;
-    pdo.CurrentHz   = motor.CurrentHz;
-    pdo.V_amp       = motor.V_amp;
-    pdo.TargetHz    = motor.TargetHz;
-    pdo.TargetVolt  = motor.TargetVolt;
-    pdo.Fault_DTC   = motor.Fault_DTC;
+    pdo.SpeedRPM     = motor.SpeedRPM;
+    pdo.Fault_DTC    = motor.Fault_DTC;
     pdo.Control_Mode = motor.Control_Mode;
-    pdo.IQAngle     = motor.IQAngle;
-    pdo.V_d         = motor.V_d;
-    pdo.V_q         = motor.V_q;
+    pdo.PwmEnabled   = Foc_Pwm_IsEnabled();
 
-    return CANFD_SendMessage(COB_PDO1_TX, (uint8_t*)&pdo, 8, 0);  // 经典CAN只发前8字节
+    return CANFD_SendMessage(COB_PDO1_TX, (uint8_t*)&pdo, sizeof(pdo), 0);
 }
 
 /* ========== 发送 PDO2: 扩展数据 ========== */
@@ -219,60 +335,64 @@ int8_t CANFD_EMCY_Send(uint16_t fault_code)
 }
 
 /* ========== SDO 处理 ========== */
-static void CANFD_ProcessSDO(uint8_t *data, uint32_t len)
+static void CANFD_ProcessSDO(const uint8_t *data, uint32_t len)
 {
     if (len < 4) return;
 
     uint8_t  cmd = data[0];
     uint16_t reg = data[1] | (data[2] << 8);
-    // uint8_t  sub = data[3];  // 暂未用
-
     uint8_t  resp[8] = {0};
     uint32_t value = 0;
     int8_t   ret;
 
+    if (data[3] != 0U) {
+        SDO_SendAbort(data, SDO_ERR_NO_INDEX);
+        return;
+    }
+
     switch (cmd) {
         case SDO_READ_REQ:
             ret = SDO_ReadRegister((SDO_Register)reg, &value);
-            if (ret == 0) {
-                resp[0] = SDO_READ_RESP;
-                resp[1] = data[1];
-                resp[2] = data[2];
-                resp[3] = 0;
-                *(uint32_t*)&resp[4] = value;
-                CANFD_SendMessage(COB_SDO_TX, resp, 8, 0);
-            } else {
-                resp[0] = SDO_ERROR;
-                resp[1] = data[1];
-                resp[2] = data[2];
-                resp[3] = 0;
-                *(uint32_t*)&resp[4] = (ret == -2) ? SDO_ERR_READ_ONLY : SDO_ERR_NO_INDEX;
-                CANFD_SendMessage(COB_SDO_TX, resp, 8, 0);
+            if (ret != SDO_ACCESS_OK) {
+                SDO_SendAbort(data, SDO_AccessToAbortCode(ret));
+                return;
             }
+
+            resp[0] = SDO_READ_RESP;
+            resp[1] = data[1];
+            resp[2] = data[2];
+            resp[3] = data[3];
+            SDO_StoreU32(&resp[4], value);
+            CANFD_SendMessage(COB_SDO_TX, resp, sizeof(resp), 0);
             break;
 
         case SDO_WRITE32_REQ:
+            if (len < 8U) {
+                SDO_SendAbort(data, SDO_ERR_TYPE);
+                return;
+            }
+
+            value = SDO_LoadU32(&data[4]);
+            ret = SDO_WriteRegister((SDO_Register)reg, value);
+            if (ret != SDO_ACCESS_OK) {
+                SDO_SendAbort(data, SDO_AccessToAbortCode(ret));
+                return;
+            }
+
+            resp[0] = SDO_WRITE_RESP;
+            resp[1] = data[1];
+            resp[2] = data[2];
+            resp[3] = data[3];
+            CANFD_SendMessage(COB_SDO_TX, resp, sizeof(resp), 0);
+            break;
+
         case SDO_WRITE16_REQ:
         case SDO_WRITE8_REQ:
-            value = *(uint32_t*)&data[4];
-            ret = SDO_WriteRegister((SDO_Register)reg, value);
-            if (ret == 0) {
-                resp[0] = SDO_WRITE_RESP;
-                resp[1] = data[1];
-                resp[2] = data[2];
-                resp[3] = 0;
-                CANFD_SendMessage(COB_SDO_TX, resp, 8, 0);
-            } else {
-                resp[0] = SDO_ERROR;
-                resp[1] = data[1];
-                resp[2] = data[2];
-                resp[3] = 0;
-                *(uint32_t*)&resp[4] = (ret == -2) ? SDO_ERR_READ_ONLY : SDO_ERR_NO_INDEX;
-                CANFD_SendMessage(COB_SDO_TX, resp, 8, 0);
-            }
+            SDO_SendAbort(data, SDO_ERR_TYPE);
             break;
 
         default:
+            SDO_SendAbort(data, SDO_ERR_TYPE);
             break;
     }
 }
@@ -345,7 +465,7 @@ static void CANFD_ProcessRxMessage(const FDCAN_RxHeaderTypeDef *header,
 
     /* SDO */
     if (id == COB_SDO_RX) {
-        CANFD_ProcessSDO((uint8_t *)data, len);
+        CANFD_ProcessSDO(data, len);
         return;
     }
 }

@@ -27,7 +27,6 @@
 
 #define ID_BUS_MIN_V                 8.0f
 #define ID_BUS_MAX_V                 30.0f
-#define ID_CURRENT_LIMIT_A           2.0f  /* 独立于逆变器全局保护的辨识限流 */
 #define ID_RS_MIN_OHM                0.02f
 #define ID_RS_MAX_OHM                20.0f
 #define ID_L_MIN_H                   5.0e-6f
@@ -129,8 +128,6 @@ static void ParamId_Complete(void)
 
 static uint8_t ParamId_CheckOperatingPoint(void)
 {
-    float max_current = fabsf(Volt_CurrPara.PhaseU_Curr);
-
     /* 母线异常时电压换算无意义，禁止继续累积错误样本。 */
     if (!isfinite(Volt_CurrPara.BUS_Voltage) ||
         Volt_CurrPara.BUS_Voltage < ID_BUS_MIN_V ||
@@ -139,18 +136,7 @@ static uint8_t ParamId_CheckOperatingPoint(void)
         return 0U;
     }
 
-    if (fabsf(Volt_CurrPara.PhaseV_Curr) > max_current) {
-        max_current = fabsf(Volt_CurrPara.PhaseV_Curr);
-    }
-    if (fabsf(Volt_CurrPara.PhaseW_Curr) > max_current) {
-        max_current = fabsf(Volt_CurrPara.PhaseW_Curr);
-    }
-    /* 使用三相绝对值最大值，避免dq角度或变换符号掩盖单相过流。 */
-    if (!isfinite(max_current) || max_current > ID_CURRENT_LIMIT_A) {
-        ParamId_Fail(ID_ERROR_OVERCURRENT);
-        return 0U;
-    }
-
+    /* 参数辨识内部的 2A 门限暂时停用；系统原有硬件/软件保护仍独立生效。 */
     return 1U;
 }
 

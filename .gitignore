@@ -1,24 +1,69 @@
-# ===== Keil MDK 构建产物 =====
+# Keil MDK build output
+/MDK-ARM/FOC_ST_V2/
+/MDK-ARM/Objects/
+/MDK-ARM/Listings/
+/Debug/
+/Release/
+/build/
 *.crf
 *.d
 *.o
+*.obj
 *.axf
+*.elf
 *.hex
-*.htm
+*.bin
 *.lnp
 *.map
 *.dep
 *.iex
 *.lst
-*.sct
-*.scvd
-# 保留启动汇编源文件
-!startup_stm32g474xx.s
+*.build_log.htm
+
+# Keep project files, startup assembly, linker scripts (.sct),
+# Event Recorder descriptions (.scvd), and RTE headers tracked.
+
+# Keil user settings and debugger-generated copies
 *.uvguix.*
 *.uvoptx
+*.uvprojx.bak
+*.uvoptx.bak
+/MDK-ARM/DebugConfig/*.dbgconf
+!/MDK-ARM/DebugConfig/FOC_ST_V2_STM32G474RETx.dbgconf
 JLinkLog.txt
 JLinkSettings.ini
+JLink*.log
 
-# ===== 编辑器/IDE =====
-.vscode/
-*.uvprojx.bak
+# Local caches; preserve shared VS Code JSON settings
+/.claude/
+/.codex/
+/.vscode/.browse.VC.db*
+/.vscode/.browse.c_cpp.db*
+/.vscode/ipch/
+/.vscode/*.log
+.cache/
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Local credentials
+/nono
+/nono.pub
+.env
+.env.*
+!.env.example
+!.env.template
+
+# Editor, Windows, and Office temporary files
+*.tmp
+*.temp
+*.bak
+*.swp
+*.swo
+*~
+~$*
+Thumbs.db
+Desktop.ini
+.DS_Store
+MDK-ARM/stm32g474xx_flash.sct
