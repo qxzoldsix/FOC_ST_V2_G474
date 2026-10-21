@@ -1,0 +1,28 @@
+MODE=2, source c43e794, source PI gains and equations unchanged.
+No VF, preposition, flux seed or true-angle/speed feedback.
+Vbus=12 V, target=200/400/1000 rpm; switches 0.8/1.6 s
+ASSUMED plant: J=2e-05, B=1e-05, load=0.005 Nm, theta0=30 deg
+Source SPEED_IQ_SIGN=-1; sampled current sign relative to winding=1
+Bridge is PWM-period average; original CCR conversion retained; assumed deadtime 0.3 V.
+Firmware observer scales command as U_pu*Km*Vbus. Plant independently reconstructs voltage from CCR/4000.
+All eleven scopes present. Controller sees no physical angle/rpm.
+
+final_actual_rpm = -1222.24590763
+final_estimated_rpm = -1223.10990554
+final_actual_target_error_rpm = -2222.24590763
+final_estimated_target_error_rpm = -2223.10990554
+final_actual_speed_std_rpm = 3.50427467336
+tail_speed_estimation_RMSE_rpm = 11.4932936335
+tail_angle_RMSE_deg = 6.2287339889
+peak_phase_A = 2.07583683347
+peak_Iq_reference_A = 12
+peak_actual_speed_rpm = 1230.37383185
+ccr_min = 99
+ccr_max = 3901
+tracks_final_target = 0
+stage1_actual_rpm = -1189.86543565
+stage1_estimated_rpm = -1189.15369875
+stage2_actual_rpm = -1210.11514626
+stage2_estimated_rpm = -1209.84428495
+stage3_actual_rpm = -1223.95992301
+stage3_estimated_rpm = -1225.25244221

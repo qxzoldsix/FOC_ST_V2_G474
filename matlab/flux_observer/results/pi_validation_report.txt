@@ -1,0 +1,8 @@
+PI_Cale.c PID_controller, source c43e794
+FOC_Speed_PI Kp=0.01 Ki=0.0001: native/MATLAB max 0; equality/freeze/dynamic-limit checks PASSED
+  original C (float) max difference 5.72204589e-07: PASSED
+FOC_Id_PI Kp=0.01 Ki=1e-05: native/MATLAB max 0; equality/freeze/dynamic-limit checks PASSED
+  original C (float) max difference 1.13296509e-07: PASSED
+FOC_Iq_PI Kp=0.01 Ki=1e-05: native/MATLAB max 0; equality/freeze/dynamic-limit checks PASSED
+  original C (float) max difference 1.13296509e-07: PASSED
+All three FOC PI instances PASSED. No extra Ts multiplier, no substituted PID block.

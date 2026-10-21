@@ -1,0 +1,15 @@
+MODE=2 startup optimization: zero reference for 150 ms, then release the SAME reference filters/ramp.
+PI gains/formulas, observer, speed filter, plant, load and target switch times unchanged.
+No alignment current, VF, true-angle initialization, speed preloading or display smoothing.
+reference_delay_s: before 0; after 0.15
+estimated_startup_peak_rpm: before 227.602873132; after 199.706321027
+actual_startup_peak_rpm: before 203.409648305; after 200.135483293
+estimated_overshoot_pct: before 13.801436566; after 0
+actual_overshoot_pct: before 1.7048241524; after 0.0677416464979
+active_start_max_estimation_error_rpm: before 91.4812236611; after 34.4821269934
+active_start_estimation_RMSE_rpm: before 18.0638507925; after 10.3500432043
+settle2pct_from_mode2_entry_s: before 0.44175; after 0.54725
+settle2pct_after_reference_release_s: before 0.44175; after 0.39725
+phase_current_peak_A: before 0.484995803773; after 0.257882013032
+tail_torque_pp_Nm: before 0.000833593858335; after 0.00084228800462
+Tradeoff: physical acceleration begins 150 ms later; no startup data is removed.

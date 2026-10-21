@@ -1,0 +1,8 @@
+Only initial stator flux changed; motor parameters and all PI gains unchanged.
+Assumption: rotor has completed alignment at command angle 0 rad. No true angle/speed feedback.
+PLL integral and speed estimate both start at zero.
+Original 2-percent settling: 0.2111 s; overshoot: 15.3544929 percent
+Aligned 2-percent settling: 0.0303 s; overshoot: 0.0228169917 percent
+Original reset native/MATLAB max difference: 1.70530256582e-12
+Aligned reset native/MATLAB max difference: 1.84741111298e-12
+Eleven independent scopes retained.

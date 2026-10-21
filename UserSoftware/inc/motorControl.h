@@ -9,7 +9,8 @@
 
 typedef enum {
     MOTOR_MODE_STOP       = 0U,
-    MOTOR_MODE_SENSOR     = 1U,
+    
+         = 1U,
     MOTOR_MODE_SENSORLESS = 2U,
     MOTOR_MODE_VF         = 3U,
     MOTOR_MODE_PREPOS     = 4U,

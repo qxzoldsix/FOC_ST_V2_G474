@@ -1,0 +1,10 @@
+PASS: native block / independent MATLAB reference first 30 ms: max 8.881784197e-16
+PASS: MODE=2 throughout; zero observer/current/speed initial states; 11 scopes; CCR bounds.
+PASS: no FromWorkspace playback; physical angle/speed do not feed controller.
+No passing-startup assertion: physical success/failure is an experiment result.
+Default source sign final actual/estimated: -1222.24591 / -1223.10991 rpm. Tracks target: 0
+Initial angle 0 deg: actual -1220.89293 rpm, estimate -1221.37718 rpm, peak 1.97747003 A, tracks 0
+Initial angle 90 deg: actual -1221.17778 rpm, estimate -1221.95198 rpm, peak 2.07721401 A, tracks 0
+Initial angle 180 deg: actual -1214.09966 rpm, estimate -1213.83844 rpm, peak 1.97046488 A, tracks 0
+DIAGNOSTIC ONLY, Iq sign +1 (not source): actual 999.979289, estimated 998.238719 rpm, tracks 1
+PASS: final labelled layout preserves all 80001 x 34 samples exactly.

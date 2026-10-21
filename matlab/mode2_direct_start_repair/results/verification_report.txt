@@ -1,0 +1,15 @@
+PASS native blocks / independent reference first30ms max 0
+PASS zero speed/current/observer states; MODE=2; no preposition/VF/true-angle feedback; 11 scopes.
+PASS original PI equations and gains. Command polarity/shaping and voltage interfaces repaired.
+PASS 150-ms zero-reference warmup: zero physical current/torque command/speed; active-start native/reference max 9.94759830064e-13 rpm
+PASS nominal stage actual 199.012995 / 399.849517 / 999.997809 rpm
+PASS nominal startup min 0 rpm, overshoot 0.0677416465 percent, settle2pct 0.54725 s
+PASS unfiltered torque mean 0.00605064191 Nm, p-p 0.000842288005 Nm
+Initial-angle audit 0 deg: 198.98 / 399.851 / 999.999 rpm; min 0 rpm; Tpp 0.000847352; final tracking 1
+Initial-angle audit 30 deg: 199.013 / 399.85 / 999.998 rpm; min 0 rpm; Tpp 0.000842288; final tracking 1
+Initial-angle audit 90 deg: -0.0117746 / -0.0153976 / -4.07822e-12 rpm; min -0.438482 rpm; Tpp 0; final tracking 0
+Initial-angle audit 180 deg: 0.752194 / 0.652 / 0.268878 rpm; min -37.3722 rpm; Tpp 0.00102384; final tracking 0
+Initial-angle audit 270 deg: 196.211 / 399.851 / 1000 rpm; min -9.03261e-15 rpm; Tpp 0.000843167; final tracking 1
+Deadtime mismatch actual 0.24 V, estimate .3 V: final -26.4316 rpm; Tpp 0.031014 Nm; tracks 0
+Deadtime mismatch actual 0.36 V, estimate .3 V: final 999.996 rpm; Tpp 0.00172866 Nm; tracks 1
+LIMITATION: initial position is unknown at zero speed. Passing nominal tests is not a guarantee for every initial angle.

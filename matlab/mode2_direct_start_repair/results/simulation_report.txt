@@ -1,0 +1,40 @@
+MODE=2, source c43e794, source PI gains and equations unchanged.
+No VF, preposition, flux seed or true-angle/speed feedback.
+Vbus=12 V, target=200/400/1000 rpm; switches 0.8/1.6 s
+ASSUMED plant: J=2e-05, B=1e-05, load=0.005 Nm, theta0=30 deg
+Repaired Iq sign=1 (source -1); sampled winding-current sign=1
+Bridge is PWM-period average; original CCR conversion retained; assumed deadtime 0.3 V.
+Observer reconstructs applied voltage from known previous command/CCR and previous measured current.
+Deadtime correction is applied ONCE upstream; fresh Clarke samples enter the observer.
+Two-pole reference filter 2 Hz before source 1000 rpm/s slew limiter; PI Kp/Ki unchanged.
+Observer warmup: zero reference for 0.15 s; then normal reference released, no alignment current.
+Passive load: Tload=0.005*tanh(wm/1) Nm; scale=0 selects constant external load.
+Deadtime voltage FEEDFORWARD: 0.3 V, enable 0.5 s + ramp 0.5 s, estimated-speed gate 80..160 rpm.
+All eleven scopes present. Controller sees no physical angle/rpm.
+
+tail_torque_mean_Nm = 0.00605064191069
+tail_torque_pp_Nm = 0.00084228800462
+tail_torque_rms_ripple_Nm = 0.000188768955984
+final_actual_rpm = 999.998085185
+final_estimated_rpm = 999.998032494
+final_actual_target_error_rpm = -0.0019148149878
+final_estimated_target_error_rpm = -0.00196750567488
+final_actual_speed_std_rpm = 0.0867382313649
+tail_speed_estimation_RMSE_rpm = 0.0875866613135
+tail_angle_RMSE_deg = 0.0260159606319
+peak_phase_A = 0.257882013032
+peak_Iq_reference_A = 7.67690747698
+peak_actual_speed_rpm = 1026.01478692
+ccr_min = 243
+ccr_max = 3757
+startup_min_rpm = 0
+startup_peak_rpm = 200.135483293
+startup_overshoot_percent = 0.0677416464979
+startup_settle_2percent_s = 0.54725
+tracks_final_target = 1
+stage1_actual_rpm = 199.012995112
+stage1_estimated_rpm = 198.967134579
+stage2_actual_rpm = 399.849516928
+stage2_estimated_rpm = 399.834917295
+stage3_actual_rpm = 999.997809355
+stage3_estimated_rpm = 999.998210068

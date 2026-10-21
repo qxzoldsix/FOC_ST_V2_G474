@@ -1,0 +1,12 @@
+Exactly 11 scopes, each with one scalar signal. Output max difference: 0
+01_估算电角度_rad | Theta_est_rad
+02_估算电频率_Hz | Electrical_frequency_Hz
+03_机械转速_rpm | Mechanical_speed_rpm
+04_有效磁链alpha_Wb | Active_flux_alpha_Wb
+05_有效磁链beta_Wb | Active_flux_beta_Wb
+06_定子磁链alpha_Wb | Stator_flux_alpha_Wb
+07_定子磁链beta_Wb | Stator_flux_beta_Wb
+08_PLL误差_Wb | PLL_error_Wb
+09_PLL角度增量_rad_per_sample | PLL_angle_step_rad_per_sample
+10_补偿电压alpha_V | Corrected_voltage_alpha_V
+11_补偿电压beta_V | Corrected_voltage_beta_V

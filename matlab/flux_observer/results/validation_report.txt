@@ -1,0 +1,17 @@
+Source: c43e794924c73d0aec71ddcb6ee14937aa39835e
+MATLAB: 24.2.0.2712019 (R2024b)
+Simulink/MATLAB max absolute difference: 1.70530256582e-12
+Final estimated/true electrical Hz: 15.0000024 / 15
+Tail angle RMS (deg): 0.269990445
+Tail active flux mean (Wb): 0.00751999999
+Tail active flux relative error: 7.09818512e-10
+C compiler: MATLAB bundled LCC64 (standalone)
+PI demo double/float startup max angle 0.0891141953 rad; after 0.3s 2.90612897e-06 rad
+PI demo: blocks/MATLAB 2.02699e-07; C single full angle 0.0377698 rad, speed 0.282162 Hz, flux 1.05333e-06 Wb; after 0.3s angle 9.53674e-07 rad, speed 0.000116348 Hz
+PI reverse and bus scaling double/float startup max angle 0.0857413497 rad; after 0.3s 2.47163181e-06 rad
+PI reverse and bus scaling: blocks/MATLAB 1.3074e-12; C single full angle 0.00388622 rad, speed 0.0782433 Hz, flux 1.90805e-07 Wb; after 0.3s angle 4.76837e-07 rad, speed 0.000101089 Hz
+PI deadband double/float startup max angle 1.32211013e-06 rad; after 0.3s 1.21864685e-06 rad
+PI deadband: blocks/MATLAB 3.60822e-16; C single full angle 9.53674e-07 rad, speed 0.000176017 Hz, flux 2.30921e-09 Wb; after 0.3s angle 9.53674e-07 rad, speed 0.000176017 Hz
+SMO demo double/float startup max angle 0.00128941912 rad; after 0.3s 0.00128941912 rad
+SMO demo: blocks/MATLAB 8.6871e-11; C single full angle 0.00111866 rad, speed 0.0101273 Hz, flux 7.51507e-06 Wb; after 0.3s angle 0.00111866 rad, speed 0.0101273 Hz
+All four cases PASSED. Model restored to default PI configuration.

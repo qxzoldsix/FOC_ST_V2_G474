@@ -1,0 +1,8 @@
+Source: c43e794924c73d0aec71ddcb6ee14937aa39835e
+Startup: aligned (aligned mode requires completed rotor alignment)
+MATLAB: 24.2.0.2712019 (R2024b)
+Simulink/MATLAB max absolute difference: 1.84741111298e-12
+Final estimated/true electrical Hz: 15.0000024 / 15
+Tail angle RMS (deg): 0.269990445
+Tail active flux mean (Wb): 0.00751999999
+Tail active flux relative error: 7.09826355e-10
