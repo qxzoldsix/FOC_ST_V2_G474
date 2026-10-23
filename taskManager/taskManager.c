@@ -107,6 +107,8 @@ void Task_DEBUG(void)
         case MOTOR_MODE_VF:         LCD_ShowString(75, 5, (uint8_t *)"[ VF ]       ", GREEN, DARKBLUE, 12, 0); break;
         case MOTOR_MODE_PREPOS:     LCD_ShowString(75, 5, (uint8_t *)"[PREPOS]     ", GREEN, DARKBLUE, 12, 0); break;
         case MOTOR_MODE_PARAM_ID:   LCD_ShowString(75, 5, (uint8_t *)"[PARAM ID]   ", YELLOW, DARKBLUE, 12, 0); break;
+        case MOTOR_MODE_IF_STARTUP: LCD_ShowString(75, 5, (uint8_t *)"[I/F START]  ", YELLOW, DARKBLUE, 12, 0); break;
+        case MOTOR_MODE_HFI_STARTUP:LCD_ShowString(75, 5, (uint8_t *)"[HFI START]  ", YELLOW, DARKBLUE, 12, 0); break;
         default: LCD_ShowString(75, 5, (uint8_t *)"[ ?? ]      ", WHITE, DARKBLUE, 12, 0); break;
     }
     LCD_ShowFloatNum1(170, 3, Volt_CurrPara.BUS_Voltage, 4, 3, GREEN, DARKBLUE, 16);
@@ -125,6 +127,8 @@ void Task_DEBUG(void)
         case MOTOR_MODE_VF:         LCD_ShowString(50, 45, (uint8_t *)"[ VF ]       ", GREEN, BLACK, 12, 0); break;
         case MOTOR_MODE_PREPOS:     LCD_ShowString(50, 45, (uint8_t *)"[PREPOS]     ", GREEN, BLACK, 12, 0); break;
         case MOTOR_MODE_PARAM_ID:   LCD_ShowString(50, 45, (uint8_t *)"[PARAM ID]   ", YELLOW, BLACK, 12, 0); break;
+        case MOTOR_MODE_IF_STARTUP: LCD_ShowString(50, 45, (uint8_t *)"[I/F START]  ", YELLOW, BLACK, 12, 0); break;
+        case MOTOR_MODE_HFI_STARTUP:LCD_ShowString(50, 45, (uint8_t *)"[HFI START]  ", YELLOW, BLACK, 12, 0); break;
         default: LCD_ShowString(50, 45, (uint8_t *)"[ ?? ]      ", WHITE, BLACK, 12, 0); break;
     }
 

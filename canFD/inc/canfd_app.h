@@ -64,7 +64,7 @@ typedef struct {
 /* ========== PDO1 RX: 控制指令 (6字节, 适配经典CAN ≤8字节) ========== */
 typedef struct {
     uint8_t  Command;         // [0]     控制命令 (CTRL_START/STOP/...)
-    uint8_t  Control_Mode;    // [1]     控制模式 (0:停止 2:无感FOC 3:VF 4:PREPOS)
+    uint8_t  Control_Mode;    // [1]     控制模式 (0停机 1有感 2无感直闭环 3VF 4预定位 5辨识 6I/F启动 7HFI启动)
     float    TargetSpeedRPM;  // [2:5]   目标转速 RPM (闭环FOC用; VF模式自动换算TargetHz)
 } PDO1_RX_Data;
 

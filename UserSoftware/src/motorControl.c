@@ -21,28 +21,44 @@ static MotorStateMachine motor_sm = {
 
 static uint8_t Motor_ModeIsSupported(MotorControlMode mode)
 {
+    /*
+     * 这里只声明状态机认识的模式。I/F/HFI 当前先接入状态机骨架，
+     * 具体启动算法尚未实现；运行函数会安全停机，禁止误把空壳当成闭环。
+     */
     return (uint8_t)(mode == MOTOR_MODE_SENSORLESS ||
                      mode == MOTOR_MODE_VF ||
                      mode == MOTOR_MODE_PREPOS ||
-                     mode == MOTOR_MODE_PARAM_ID);
+                     mode == MOTOR_MODE_PARAM_ID ||
+                     mode == MOTOR_MODE_IF_STARTUP ||
+                     mode == MOTOR_MODE_HFI_STARTUP);
 }
 
 static uint8_t Motor_ModeCanStartExternally(MotorControlMode mode)
 {
+    /* SENSOR 无位置源，仍禁止外部直接启动；I/F/HFI 允许命令进入骨架。 */
     return (uint8_t)(mode == MOTOR_MODE_SENSORLESS ||
                      mode == MOTOR_MODE_VF ||
                      mode == MOTOR_MODE_PREPOS ||
-                     mode == MOTOR_MODE_PARAM_ID);
+                     mode == MOTOR_MODE_PARAM_ID ||
+                     mode == MOTOR_MODE_IF_STARTUP ||
+                     mode == MOTOR_MODE_HFI_STARTUP);
 }
 
 static uint8_t Motor_ModeIsClosedLoop(MotorControlMode mode)
 {
+    /* MODE=2 的语义是“直接无感闭环”，不隐式拼接 VF/I/F/HFI 启动。 */
     return (uint8_t)(mode == MOTOR_MODE_SENSORLESS);
 }
 
 static uint8_t Motor_ModeIsVfFamily(MotorControlMode mode)
 {
     return (uint8_t)(mode == MOTOR_MODE_VF || mode == MOTOR_MODE_PREPOS);
+}
+
+static uint8_t Motor_ModeIsStartup(MotorControlMode mode)
+{
+    return (uint8_t)(mode == MOTOR_MODE_IF_STARTUP ||
+                     mode == MOTOR_MODE_HFI_STARTUP);
 }
 
 static void Motor_ResetClosedLoopRuntime(void)
@@ -151,6 +167,12 @@ static uint8_t Motor_EnterMode(MotorControlMode next_mode)
         Motor_PrepareClosedLoop(previous_mode);
     }
 
+    if (Motor_ModeIsStartup(next_mode)) {
+        /* 启动模式从干净的 PI/给定状态开始；具体启动子状态尚未实现。 */
+        Motor_ResetClosedLoopRuntime();
+        SpeedRpm_GXieLv.XieLv_Y = 0.0f;
+    }
+
     if (Motor_ModeIsVfFamily(next_mode)) {
         Motor_PrepareVfFamily(previous_mode);
     }
@@ -166,71 +188,101 @@ static uint8_t Motor_EnterMode(MotorControlMode next_mode)
     return 1U;
 }
 
+static void SpeedLimitPi(void)
+{
+    /* 仅零目标禁止速度 PI 产生 Iq；正、负非零目标均进入速度环。 */
+    if (fabsf(SpeedRpm_GXieLv.XieLv_X) <= 0.01f) {
+        PI_ResetRuntime(&pi_spd);
+        SpeedRpm_GXieLv.XieLv_Y = 0.0f;
+        SpeedRpm_GXieLv.Timer_Count = 0U;
+        I_q_GXieLv.XieLv_X = 0.0f;
+        I_q_GXieLv.XieLv_Y = 0.0f;
+        I_q_GXieLv.Timer_Count = 0U;
+    } else {
+        Speed_FOC();
+    }
+}
+
 static void Motor_RunSensorless(void)
 {
+    /* MODE=2：只执行观测器→Park→速度/电流环→SVPWM，不调用 VF 或启动辅助。 */
     Angel_Get();
     UVW_Axis_DQ();
-    Speed_FOC();
+    SpeedLimitPi();
     Idq_FOC();
     FOC_Svpwm_dq();
 }
 
+static void Motor_RunIfStartup(void)
+{
+    /*
+     * I/F 启动状态机入口（算法待实现）。
+     * 预期流程：ALIGN/I-F 频率斜坡→观测器锁定检查→平滑切入 MODE=2。
+     * 当前不能输出试验波形，先封波，避免把未实现模式误当作安全启动。
+     */
+    Motor_ControlStop();
+}
+
+static void Motor_RunHfiStartup(void)
+{
+    /*
+     * HFI 启动状态机入口（算法待实现）。
+     * 预期流程：高频注入→解调凸极位置→定位/闭环接管→退出注入。
+     * 当前 IPD_HFI_Injection() 仍为空壳，因此必须安全停机。
+     */
+    Motor_ControlStop();
+}
+
 static void Motor_RunPreposition(void)
 {
-    float pll_step;
+    /* MODE=4：当前为预定位/VF 试验。 */
 
-    VF_Control_Run(&motor);
-    pll_step = 2.0f * PI * motor.CurrentHz * Foc_observer.Ctrl_ts;
-
-    /* VF 提供速度前馈，观测器在后台修正角度。 */
-    Foc_observer.PLL_Interg = pll_step;
-
-    CLARKE_PCurr.Us = Volt_CurrPara.PhaseU_Curr;
-#if CURRENT_USE_W_AS_V
-    CLARKE_PCurr.Vs = Volt_CurrPara.PhaseW_Curr;
-#else
-    CLARKE_PCurr.Vs = Volt_CurrPara.PhaseV_Curr;
-#endif
-    CLARKE_Cale((p_CLARKE)&CLARKE_PCurr);
-    Observer_Run();
-
-    /* 保持速度估计跟随 VF，供切入闭环时无扰接管。 */
-    Foc_observer.PLL_Interg = pll_step;
-    Foc_observer.speed_hz = motor.CurrentHz;
-    motor.IQAngle = (int16_t)((uint16_t)(651.8986f *
-                          Foc_observer.Theta) & 0x0FFFU);
-    motor.SpeedRPM = motor.CurrentHz * 60.0f / (MOTOR_POLES / 2.0f);
-
-    /* VF 继续驱动 PWM，同时刷新 Id/Iq 诊断量。 */
-    UVW_Axis_DQ();
 }
 
 static void Motor_RunActiveMode(void)
 {
     switch (motor_sm.active_mode) {
         case MOTOR_MODE_STOP:
+            /* 停机态：不执行控制算法；PWM 已由 Motor_ControlStop() 封锁。 */
             break;
 
         case MOTOR_MODE_SENSORLESS:
+            /* 无感直接闭环。 */
             Motor_RunSensorless();
             break;
 
         case MOTOR_MODE_VF:
+            /* V/F 开环。 */
             VF_Control_Run(&motor);
             break;
 
         case MOTOR_MODE_PREPOS:
+            /* 预定位模式。打12个方向脉冲确定dq位置 要点凸极性 */
             Motor_RunPreposition();
             break;
 
         case MOTOR_MODE_PARAM_ID:
-            /* 完成或失败时ParamId_Run内部调用统一停机，结果保留在pid中。 */
+            /* 参数辨识：完成/失败后可以置位。 */
             ParamId_Run();
             break;
 
+        case MOTOR_MODE_IF_STARTUP:
+            /* I/F 启动：当前仅保留入口，算法未实现，运行函数会安全停机。 */
+            Motor_RunIfStartup();
+            break;
+
+        case MOTOR_MODE_HFI_STARTUP:
+            /* HFI 启动：当前仅保留入口，注入/解调算法未实现，安全停机。 */
+            Motor_RunHfiStartup();
+            break;
+
         case MOTOR_MODE_SENSOR:
+            /* 有感模式：角度源尚未接入，不能运行功率级。 */
+            Motor_ControlStop();
+            break;
+
         default:
-            /* SENSOR 尚无角度源，任何非法内部状态都按故障安全方式停机。 */
+            /* 未知模式：按故障封波。 */
             Motor_ControlStop();
             break;
     }

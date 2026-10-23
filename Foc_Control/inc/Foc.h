@@ -26,7 +26,7 @@ typedef struct
 	float TargetVolt;			// VF 目标电压 (pu)
 	uint16_t   Fault_DTC;      // 故障码（位掩码）
 	int16_t IQAngle;            // 电角度 (0~4095)
-	uint8_t Control_Mode;		// 0:停机 1:有感 2:无感 3:VF 4:预定位
+	uint8_t Control_Mode;		// 0停机 1有感 2无感直闭环 3VF 4预定位 5辨识 6I/F启动 7HFI启动
 }Control_FB;
 
 typedef struct {
