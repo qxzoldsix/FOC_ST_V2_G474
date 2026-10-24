@@ -19,24 +19,24 @@ typedef struct{
     float Ref;
     float Fbk;
     float Out;
-    float OutF;//�˲������
+    float OutF;       // 滤波后的输出
     float Kp;
     float Ki;
-    float Umax;//���ֱ�������
+    float Umax;       // 输出上限
     float Umin;
-    float  up;        // PI���Ƶı������������
-    float  ui;        // PI���ƵĻ������������
-    float  v1;        // PI���Ƶ���ʷ��������
-    float  i1;        // PI���Ƶ���ʷ�������������
+    float  up;        // 当前误差 Ref - Fbk
+    float  ui;        // 本拍积分输出
+    float  v1;        // 限幅前的 PI 输出
+    float  i1;        // 上一拍积分输出
 }PI_controller, *p_PI_Control;
 /* 
-Kp������ϵ������Ӧ�ٶȣ�
-Ki������ϵ�����������
-Umax/Umin������޷�
-up����ǰ���
-ui��������
-v1���������ֵ
-Out��ʵ�����ֵ
+Kp：比例系数（响应速度）
+Ki：积分系数（消除静差）
+Umax/Umin：输出上下限
+up：当前误差
+ui：本拍积分输出
+v1：限幅前的 PI 输出
+Out：限幅后的输出
 */
 #define PI_Control_DEFAULTS {0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0}
 void PI_Init(void);

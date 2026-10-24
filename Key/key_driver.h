@@ -3,15 +3,15 @@
 
 #include "main.h"
 
-/* °´¼üÓÀ¾ÃÆÁ±ÎÆÁ±ÎÖµ */
+/* æŒ‰é”®æ°¸ä¹…å±è”½å±è”½å€¼ */
 #define key_alway_shield 0xFFFFFFFF
 
-/* °´¼üÊ±¼ä¶¨Òå */
-#define click_one_wait_for_double_time 500       // Ë«»÷Á½´ÎÖ®¼ä×î´ó¼ä¸ôÊ±¼ä µ¥Î»ms
-#define long_press_time 1600                     // Ê¶±ğÎª³¤°´µÄÊ±¼ä µ¥Î»ms
-#define long_press_effective_interval_time 10000 // ³¤°´Ê±Ã¿´Î´¥·¢¼ä¸ô µ¥Î»ms
+/* æŒ‰é”®æ—¶é—´å®šä¹‰ */
+#define click_one_wait_for_double_time 500       // åŒå‡»ä¸¤æ¬¡ä¹‹é—´æœ€å¤§é—´éš”æ—¶é—´ å•ä½ms
+#define long_press_time 1600                     // è¯†åˆ«ä¸ºé•¿æŒ‰çš„æ—¶é—´ å•ä½ms
+#define long_press_effective_interval_time 10000 // é•¿æŒ‰æ—¶æ¯æ¬¡è§¦å‘é—´éš” å•ä½ms
 
-/* °´¼üÊıÁ¿Óë±àºÅ */
+/* æŒ‰é”®æ•°é‡ä¸ç¼–å· */
 typedef enum {
 	key_sw1,
 	key_sw2,
@@ -19,59 +19,59 @@ typedef enum {
 	key_sw4,
 	key_sw5,
 	key_sw6,
-	key_num,                  // ×Ü°´¼üÊıÁ¿
+	key_num,                  // æ€»æŒ‰é”®æ•°é‡
 } key_t;
 
-/* °´¼ü×´Ì¬»ú¶¨Òå */
+/* æŒ‰é”®çŠ¶æ€æœºå®šä¹‰ */
 typedef enum 
 {
-	key_release,                       // °´¼üÊÍ·Å×´Ì¬
-	key_short_pressing,                // °´¼ü¶Ì°´×´Ì¬
-	key_double_pressing,               // °´¼üË«»÷×´Ì¬
-	key_click_one_wait_for_double,     // °´¼üµ¥»÷µÈ´ıË«»÷×´Ì¬
-	key_long_pressing,                 // °´¼ü³¤°´×´Ì¬
-	key_state_machine_num,             // ×´Ì¬»úÊıÁ¿ ¸¨Öú¼ÆÊı
+	key_release,                       // æŒ‰é”®é‡Šæ”¾çŠ¶æ€
+	key_short_pressing,                // æŒ‰é”®çŸ­æŒ‰çŠ¶æ€
+	key_double_pressing,               // æŒ‰é”®åŒå‡»çŠ¶æ€
+	key_click_one_wait_for_double,     // æŒ‰é”®å•å‡»ç­‰å¾…åŒå‡»çŠ¶æ€
+	key_long_pressing,                 // æŒ‰é”®é•¿æŒ‰çŠ¶æ€
+	key_state_machine_num,             // çŠ¶æ€æœºæ•°é‡ è¾…åŠ©è®¡æ•°
 } key_state_machine_t;
 
-/* °´¼ü¼üÖµ¶¨Òå */
+/* æŒ‰é”®é”®å€¼å®šä¹‰ */
 typedef enum {
-	key_none = key_state_machine_num,  // ÎŞ°´¼ü
-	key_click_one,                     // µ¥»÷
-	key_click_double,                  // Ë«»÷
-	key_long_press,                    // ³¤°´
+	key_none = key_state_machine_num,  // æ— æŒ‰é”®
+	key_click_one,                     // å•å‡»
+	key_click_double,                  // åŒå‡»
+	key_long_press,                    // é•¿æŒ‰
 } key_value_t;
 
-/* °´¼ü·À¶¶ÂË²¨½á¹¹Ìå */
+/* æŒ‰é”®é˜²æŠ–æ»¤æ³¢ç»“æ„ä½“ */
 typedef struct {
-	uint32_t hold_time;             // °´¼ü±£³ÖÊ±¼ä
-	uint64_t time_point;            // Ê±¼äµã
-	uint32_t trigger_variable;      // ´¥·¢±äÁ¿
-	uint8_t last_variable_state;    // ÉÏÒ»´Î±äÁ¿×´Ì¬
-	uint8_t result;                 // ÂË²¨½á¹û
+	uint32_t hold_time;             // æŒ‰é”®ä¿æŒæ—¶é—´
+	uint64_t time_point;            // æ—¶é—´ç‚¹
+	uint32_t trigger_variable;      // è§¦å‘å˜é‡
+	uint8_t last_variable_state;    // ä¸Šä¸€æ¬¡å˜é‡çŠ¶æ€
+	uint8_t result;                 // æ»¤æ³¢ç»“æœ
 } hold_filter_t;
 
-/* °´¼üÇı¶¯²ã½á¹¹Ìå */
+/* æŒ‰é”®é©±åŠ¨å±‚ç»“æ„ä½“ */
 typedef struct {
-	hold_filter_t bsp_hold_filter;    	// Ó²¼ş²ã°´¼üÂË²¨
-	uint32_t shield;                    // ÆÁ±ÎÊ±¼ä 0=ÍêÈ«ÆÁ±Î 1=Ê¹ÄÜ
-	uint32_t press_time;                // °´ÏÂ¿ªÊ¼Ê±¼ä
-	uint32_t release_time;              // ÊÍ·Å¿ªÊ¼Ê±¼ä
-	key_state_machine_t state_machine;  // °´¼üµ±Ç°×´Ì¬»ú
-	key_value_t key_value;              // ×îÖÕÊ¶±ğ¼üÖµ
+	hold_filter_t bsp_hold_filter;    	// ç¡¬ä»¶å±‚æŒ‰é”®æ»¤æ³¢
+	uint32_t shield;                    // å±è”½æ—¶é—´ 0=å®Œå…¨å±è”½ 1=ä½¿èƒ½
+	uint32_t press_time;                // æŒ‰ä¸‹å¼€å§‹æ—¶é—´
+	uint32_t release_time;              // é‡Šæ”¾å¼€å§‹æ—¶é—´
+	key_state_machine_t state_machine;  // æŒ‰é”®å½“å‰çŠ¶æ€æœº
+	key_value_t key_value;              // æœ€ç»ˆè¯†åˆ«é”®å€¼
 } key_driver_t;
 
-// °´¼üÇı¶¯³õÊ¼»¯
+// æŒ‰é”®é©±åŠ¨åˆå§‹åŒ–
 void key_driver_init(void);
-// °´¼ü×´Ì¬¼ì²â
+// æŒ‰é”®çŠ¶æ€æ£€æµ‹
 void key_check(void);
-// °´¼üÊı×é³õÊ¼»¯
+// æŒ‰é”®æ•°ç»„åˆå§‹åŒ–
 void key_array_init(void);
-// °´¼ü´¦ÀíÖ÷º¯Êı£¨µ¥»÷/Ë«»÷/³¤°´£©
+// æŒ‰é”®å¤„ç†ä¸»å‡½æ•°ï¼ˆå•å‡»/åŒå‡»/é•¿æŒ‰ï¼‰
 void key_process(void);
-// °´¼ü±£³ÖÂË²¨
+// æŒ‰é”®ä¿æŒæ»¤æ³¢
 uint8_t hold_filter(hold_filter_t *filter_p, uint32_t variable);
 
-extern key_driver_t key_array[];   // °´¼üÊµÀıÊı×é (4 keys)
+extern key_driver_t key_array[];   // æŒ‰é”®å®ä¾‹æ•°ç»„ (4 keys)
 
 #endif /* __KEY_DRIVER_H__ */
 

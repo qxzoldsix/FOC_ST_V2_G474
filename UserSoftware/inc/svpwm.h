@@ -28,7 +28,7 @@ typedef struct 	{
 } SVPWM , *p_SVPWM ;
 
 
-#define SVPWM_DEFAULTS  {0.0,0.0,0.0,0.0,0.0,0,0,0,0.0,0.0,0.0,0}  // ��ʼ������ 
+#define SVPWM_DEFAULTS  {0.0,0.0,0.0,0.0,0.0,0,0,0,0.0,0.0,0.0,0}  // 默认初始化值
 
 extern SVPWM  Svpwm_dq;
 void svpwm_Cale(p_SVPWM pV);

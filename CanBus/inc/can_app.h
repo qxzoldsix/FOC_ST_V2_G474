@@ -1,24 +1,26 @@
-#ifndef __CANFD_APP_H__
-#define __CANFD_APP_H__
+#ifndef CAN_APP_H
+#define CAN_APP_H
+
+/* CAN 应用协议层；当前使用经典 CAN 帧，底层由 STM32 FDCAN 外设承载。 */
 
 #include "headline.h"
 
 /* ========== 节点配置 ========== */
-#define CANFD_NODE_ID       0x01
-#define CANFD_SW_VERSION_CODE  0x0260830AUL
-#define CANFD_SW_VERSION_TEXT  "260830A"
+#define CAN_APP_NODE_ID       0x01
+#define CAN_APP_SW_VERSION_CODE  0x0261024AUL
+#define CAN_APP_SW_VERSION_TEXT  "261024A"
 
 /* ========== CAN ID (11-bit) ========== */
 #define COB_NMT             0x000           // 网络管理
 #define COB_SYNC            0x080           // 同步帧
-#define COB_EMCY            (0x080 + CANFD_NODE_ID)   // 紧急报文
-#define COB_PDO1_TX         (0x180 + CANFD_NODE_ID)   // 电机→主机: 状态
-#define COB_PDO1_RX         (0x200 + CANFD_NODE_ID)   // 主机→电机: 指令
-#define COB_PDO2_TX         (0x280 + CANFD_NODE_ID)   // 电机→主机: 扩展数据
-#define COB_PDO2_RX         (0x300 + CANFD_NODE_ID)   // 主机→电机: 扩展指令
-#define COB_SDO_TX          (0x580 + CANFD_NODE_ID)   // SDO 应答
-#define COB_SDO_RX          (0x600 + CANFD_NODE_ID)   // SDO 请求
-#define COB_HEARTBEAT       (0x700 + CANFD_NODE_ID)   // 心跳
+#define COB_EMCY            (0x080 + CAN_APP_NODE_ID)   // 紧急报文
+#define COB_PDO1_TX         (0x180 + CAN_APP_NODE_ID)   // 电机→主机: 状态
+#define COB_PDO1_RX         (0x200 + CAN_APP_NODE_ID)   // 主机→电机: 指令
+#define COB_PDO2_TX         (0x280 + CAN_APP_NODE_ID)   // 电机→主机: 扩展数据
+#define COB_PDO2_RX         (0x300 + CAN_APP_NODE_ID)   // 主机→电机: 扩展指令
+#define COB_SDO_TX          (0x580 + CAN_APP_NODE_ID)   // SDO 应答
+#define COB_SDO_RX          (0x600 + CAN_APP_NODE_ID)   // SDO 请求
+#define COB_HEARTBEAT       (0x700 + CAN_APP_NODE_ID)   // 心跳
 
 /* ========== NMT 命令 ========== */
 #define NMT_START           0x01
@@ -123,17 +125,17 @@ typedef enum {
 } SDO_Register;
 
 /* ========== API ========== */
-void CANFD_App_Init(void);
-void CANFD_App_Process(void);
-int8_t CANFD_PDO1_TX_Send(void);
-int8_t CANFD_PDO2_TX_Send(void);
-int8_t CANFD_Heartbeat_Send(void);
-int8_t CANFD_EMCY_Send(uint16_t fault_code);
-const char *CANFD_GetSoftwareVersionText(void);
+void CAN_App_Init(void);
+void CAN_App_Process(void);
+int8_t CAN_App_PDO1_TX_Send(void);
+int8_t CAN_App_PDO2_TX_Send(void);
+int8_t CAN_App_Heartbeat_Send(void);
+int8_t CAN_App_EMCY_Send(uint16_t fault_code);
+const char *CAN_App_GetSoftwareVersionText(void);
 
 /* 用户需要在应用层实现的回调 */
-extern void CANFD_OnNMT(uint8_t cmd);
-extern void CANFD_OnPDO1_RX(PDO1_RX_Data *data);
-extern void CANFD_OnPDO2_RX(PDO2_RX_Data *data);
+extern void CAN_App_OnNMT(uint8_t cmd);
+extern void CAN_App_OnPDO1_RX(PDO1_RX_Data *data);
+extern void CAN_App_OnPDO2_RX(PDO2_RX_Data *data);
 
 #endif

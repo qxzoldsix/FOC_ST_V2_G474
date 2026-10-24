@@ -1,6 +1,6 @@
 #include "headline.h"
 
-const float fSin[1025]=   //0~90¶È
+const float fSin[1025]=   //0~90åº¦
 {
     0,              //sin(2*pi/4096*0)
     0.00153398	,   //sin(2*pi/4096*1)
@@ -1031,7 +1031,7 @@ const float fSin[1025]=   //0~90¶È
 
 void SinCos_Table(p_Ang_SinCos PV)
 {
-    switch(PV->table_Angle & U_0)   //  0---4095µÄµç½Ç¶È¿ØÖÆ·ÖËÄ¶Î²éÑ¯90
+    switch(PV->table_Angle & U_0)   //  0---4095çš„ç”µè§’åº¦æ§åˆ¶åˆ†å››æ®µæŸ¥è¯¢90
     {
     case U0_90:      //
         PV->table_Sin=fSin[PV->table_Angle ];
@@ -1066,7 +1066,7 @@ void Grad_XieLv(p_GXieLv pV)
     }
     else
     {
-        pV->XieLv_Y = pV->XieLv_X;//ÔÚÔÊĞíÇø¼ä¿ÉÖ±½ÓµÈÓÚ
+        pV->XieLv_Y = pV->XieLv_X;//åœ¨å…è®¸åŒºé—´å¯ç›´æ¥ç­‰äº
     }
 }
 float  Limit_Sat( float Uint,float U_max, float U_min) 

@@ -365,7 +365,7 @@ uint8_t Motor_ControlStart(uint8_t mode, float target_speed_rpm)
         return 0U;
     }
 
-    target_hz = target_speed_rpm * (MOTOR_POLES / 2.0f) / 60.0f;
+    target_hz = target_speed_rpm * (float)MOTOR_POLE_PAIRS / 60.0f;
     if (!isfinite(target_hz) || target_hz > VF_FREQ_MAX) {
         return 0U;
     }
@@ -427,7 +427,7 @@ void PWM_SetDuty(uint16_t ccr1, uint16_t ccr2, uint16_t ccr3)
 
 /* ========== CAN 控制回调 ========== */
 
-void CANFD_OnNMT(uint8_t cmd)
+void CAN_App_OnNMT(uint8_t cmd)
 {
     switch (cmd) {
         case NMT_START:
@@ -445,7 +445,7 @@ void CANFD_OnNMT(uint8_t cmd)
     }
 }
 
-void CANFD_OnPDO1_RX(PDO1_RX_Data *data)
+void CAN_App_OnPDO1_RX(PDO1_RX_Data *data)
 {
     if (data == NULL) return;
 
@@ -467,7 +467,7 @@ void CANFD_OnPDO1_RX(PDO1_RX_Data *data)
     }
 }
 
-void CANFD_OnPDO2_RX(PDO2_RX_Data *data)
+void CAN_App_OnPDO2_RX(PDO2_RX_Data *data)
 {
     if (data == NULL) return;
     // Id/Iq 目标值，后续接入电流环

@@ -569,3 +569,20 @@ g(i) 使用滞回或平滑过零，阈值依据 ADC 噪声/纹波标定。电流
 ### 18.4 2026-10-24 封装 SpeedLimitPi
 
 按用户要求，将 MODE=2 的零目标复位及正负非零目标调用速度环的判断原样封装为 motorControl.c 内部静态函数 SpeedLimitPi()，由 Motor_RunSensorless() 调用。仅提取函数，行为不变；差异检查通过，未编译或实机验证。
+
+### 2026-10-24 明确极数和 CAN 应用命名，修复乱码
+
+- 极数宏拆为 MOTOR_POLE_COUNT=14U（总极数）、MOTOR_POLE_PAIRS=MOTOR_POLE_COUNT/2U（7 极对），速度/电频率换算直接使用极对数，数值行为不变。保留用户恢复的 Rs=0.875 Ω、Ls/Ld/Lq=200 µH、磁链 0.00752 Wb。
+- 应用层 CANFD_* 改名为 CAN_App_*，节点/版本宏改为 CAN_APP_*，任务周期明确为 CAN_APP_TASK_PERIOD_MS，内部统计量改用 can_app_*。目录 canFD 改为 CanBus，源文件/头文件改为 can_app.c/h，主程序、任务、控制回调、公共头文件、Keil 工程和生成脚本注释同步更新。当前应用发送经典 CAN 帧；STM32 FDCAN 外设/HAL 标识保持原名，报文内容及控制行为不变。用户原有 uvprojx 修改保留。
+- 批量改名中 motorControl.c 的 BOM 编码处理曾造成中文注释变为问号，已恢复原始内容后仅替换标识符。另修复 Common_Math.h、PI_Cale.h、svpwm.h 中历史乱码注释，数学、PWM 输入及按键相关 GBK 源文件转为 UTF-8，重写 key_bsp.c 已损坏的注释。LCD 的 GBK 字库及相关文件保留原始编码，避免改变字库字符串的运行时字节。
+- 验证：应用源文件 UTF-8/乱码检查、16 个 CAN_App 函数的定义检查、Keil XML 和 CanBus 路径检查通过；去注释后的代码与 HEAD 按命名映射逐项对照一致（用户已改电机参数的 flux.h 除外）。差异检查通过，未执行 STM32 全工程编译或实机验证。
+
+
+### 2026-10-24 删除 Excel 生成脚本
+
+按用户要求删除用于生成 CAN 协议 Excel 表的 generate_can_xlsx.py。现有 xlsx 文件保留。
+
+
+### 2026-10-24 更新软件版本
+
+CAN 应用软件版本更新为 261024A，CAN_APP_SW_VERSION_CODE=0x0261024AUL，CAN_APP_SW_VERSION_TEXT 为 261024A。需重新编译并烧录后生效。

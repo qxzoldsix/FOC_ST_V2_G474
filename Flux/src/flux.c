@@ -483,5 +483,5 @@ void Angel_Get(void)
     }
 
     // 速度反馈: 电频率 Hz → 机械转速 RPM
-    motor.SpeedRPM = Foc_observer.speed_hz * 60.0f / (MOTOR_POLES / 2.0f);
+    motor.SpeedRPM = Foc_observer.speed_hz * 60.0f / (float)MOTOR_POLE_PAIRS;
 }

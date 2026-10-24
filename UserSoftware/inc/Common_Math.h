@@ -23,8 +23,8 @@ typedef struct
 #define  Ang_SinCos_DEFAULTS    {0,0.0,0.0}
 
 typedef struct
-{  //ָ�������б�ʴ���
-  	float  XieLv_X;   // ָ�����б���������x
+{  // 给定值斜坡发生器
+	float  XieLv_X;   // 外部目标值
 	float  XieLv_Y;
 	float  XieLv_Grad;
 	uint32_t    Timer_Count;

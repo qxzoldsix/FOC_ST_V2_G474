@@ -23,7 +23,7 @@ key_bsp_t key_bsp;
 * @brief:      key_bsp_init(void)
 * @param:		   void
 * @retval:     void
-* @details:    ¡ã¡ä?¨¹¨®2?t3?¨º??¡¥
+* @details:    æŒ‰é”®ç¡¬ä»¶åˆå§‹åŒ–ï¼›å½“å‰ GPIO é…ç½®ç”±å¤–éƒ¨å®Œæˆã€‚
 ***********************************************************************
 **/
 void key_bsp_init(void)
@@ -45,9 +45,9 @@ void key_bsp_init(void)
 /**
 ***********************************************************************
 * @brief:      key_bsp_read_pin(key_bsp_gpio_t *port, uint16_t pin)
-* @param:		   port: GPIO   pin: ¨°y??o?
-* @retval:     ¡Á¡ä¨¬?¡À¨º??
-* @details:    ?¨¢¨¨?¡ã¡ä?¨¹IO¡Á¡ä¨¬?
+* @param:      portï¼šGPIO ç«¯å£ï¼›pinï¼šå¼•è„šç¼–å·
+* @retval:     å¼•è„šç”µå¹³çŠ¶æ€
+* @details:    è¯»å–æŒ‰é”® GPIO ç”µå¹³ã€‚
 ***********************************************************************
 **/
 key_bsp_state key_bsp_read_pin(key_bsp_gpio_t *port, uint16_t pin)
@@ -62,8 +62,8 @@ key_bsp_state key_bsp_read_pin(key_bsp_gpio_t *port, uint16_t pin)
 ***********************************************************************
 * @brief:      get_key_bsptick(void)
 * @param:		   void
-* @retval:     ¦Ì?¡äe¨º¡À??
-* @details:    ??¨¨?¡ã¡ä?¨¹¦Ì?¦Ì?¡äe¨º¡À??
+* @retval:     ç³»ç»Ÿæ¯«ç§’è®¡æ•°
+* @details:    è¿”å› HAL_GetTick() çš„æ¯«ç§’è®¡æ•°ï¼Œä¾›æŒ‰é”®è®¡æ—¶ä½¿ç”¨ã€‚
 ***********************************************************************
 **/
 uint32_t get_key_bsptick(void)

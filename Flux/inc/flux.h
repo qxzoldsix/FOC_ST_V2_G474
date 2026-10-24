@@ -13,12 +13,13 @@
 #define OBSERVER_TYPE  OBS_HYBRID_ACTIVE_FLUX   // <-- 在此切换观测器
 
 /* ========== 电机参数（运行时可切换方案待实现）========== */
-#define MOTOR_RS    0.07710429f     // 本机辨识定子电阻 (Ω)
-#define MOTOR_LS    0.0000148507f   // 平均电感 (Ld + Lq) / 2，供非凸极模型使用 (H)
-#define MOTOR_LD    0.0000165559f   // 本机辨识 d 轴电感 (H)
-#define MOTOR_LQ    0.0000131455f   // 本机辨识 q 轴电感 (H)
+#define MOTOR_RS    0.875f      // 定子电阻 (Ω)
+#define MOTOR_LS    0.0002f     // 定子电感 (H) — 表贴式电机 Ld≈Lq≈Ls
+#define MOTOR_LD    0.0002f     // d 轴电感 (H)
+#define MOTOR_LQ    0.0002f     // 本机辨识 q 轴电感 (H)
 #define MOTOR_FLUX  0.00752f    // 永磁体磁链 (Wb)
-#define MOTOR_POLES 14          // 极对数
+#define MOTOR_POLE_COUNT 14U         // 电机总极数
+#define MOTOR_POLE_PAIRS (MOTOR_POLE_COUNT / 2U) // 极对数：14 极 = 7 极对
 
 /* ========== Hybrid Active Flux 观测器参数 ========== */
 #define HYBRID_PLL_BW_HZ      15.0f   // PLL 带宽 (Hz)，按二阶系统 ζ=1 设计
