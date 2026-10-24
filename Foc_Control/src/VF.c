@@ -13,17 +13,21 @@ SVPWM Svpwm_dq = SVPWM_DEFAULTS;
 void VF_Control_Run(Control_FB *pCtrl)
 {
 		IPARK VF_IPARK;
+    float target_pu = pCtrl->TargetVolt;
+    float voltage_limit = PWM_GetVoltageLimitPu();
+    if (!isfinite(target_pu) || target_pu < 0.0f) target_pu = 0.0f;
+    if (target_pu > voltage_limit) target_pu = voltage_limit;
 		VF_HzRamp.XieLv_X = pCtrl->TargetHz;
 		Grad_XieLv(&VF_HzRamp);
 		pCtrl->CurrentHz = VF_HzRamp.XieLv_Y;	
 
-    if (pCtrl->CurrentHz <= 0.0f || pCtrl->TargetHz <= 0.0f || pCtrl->TargetVolt <= VF_VOLTAGE_MIN) {
+    if (pCtrl->CurrentHz <= 0.0f || pCtrl->TargetHz <= 0.0f || target_pu <= VF_VOLTAGE_MIN) {
         pCtrl->V_amp = 0.0f;
     }
     else {
-        pCtrl->V_amp = VF_VOLTAGE_MIN + (pCtrl->TargetVolt - VF_VOLTAGE_MIN) * (pCtrl->CurrentHz / pCtrl->TargetHz);
-        if (pCtrl->V_amp > pCtrl->TargetVolt) {
-            pCtrl->V_amp = pCtrl->TargetVolt;
+        pCtrl->V_amp = VF_VOLTAGE_MIN + (target_pu - VF_VOLTAGE_MIN) * (pCtrl->CurrentHz / pCtrl->TargetHz);
+        if (pCtrl->V_amp > target_pu) {
+            pCtrl->V_amp = target_pu;
         }
     }
 		pCtrl->OpenTheta += 2.0f * PI * pCtrl->CurrentHz * VF_TS;

@@ -100,12 +100,10 @@ void Speed_FOC(void){
  */
 void Idq_FOC(void)
 {
-    float bus_pu;
     float voltage_limit;
     float q_voltage_limit;
 
-    bus_pu = Volt_CurrPara.BUS_Voltage / NOMINAL_BUS_VOLTAGE;
-    voltage_limit = Limit_Sat(bus_pu, FOC_VOLTAGE_PU_MAX, 0.0f);
+    voltage_limit = PWM_GetVoltageLimitPu();
 
     /* ---------- d 轴电流环 ---------- */
     pi_id.Umax = voltage_limit;
@@ -114,6 +112,7 @@ void Idq_FOC(void)
     pi_id.Fbk = PARK_PCurr.Ds;                          // d 轴电流反馈
     PID_controller((p_PI_Control)&pi_id);               // d 轴 PI
     pi_id.OutF = pi_id.OutF * GM_Low_Lass_A + pi_id.Out * GM_Low_Lass_B;  // 低通滤波
+    pi_id.OutF = Limit_Sat(pi_id.OutF, pi_id.Umax, pi_id.Umin);
     motor.V_d = pi_id.OutF;                             // d 轴电压输出
 
     /* q 轴使用 d 轴剩余的电压裕量，保证 sqrt(Vd²+Vq²) 不越界。 */
@@ -129,6 +128,7 @@ void Idq_FOC(void)
     pi_iq.Fbk = PARK_PCurr.Qs;                          // q 轴电流反馈
     PID_controller((p_PI_Control)&pi_iq);               // q 轴 PI
     pi_iq.OutF = pi_iq.OutF * GM_Low_Lass_A + pi_iq.Out * GM_Low_Lass_B;  
+    pi_iq.OutF = Limit_Sat(pi_iq.OutF, pi_iq.Umax, pi_iq.Umin);
     motor.V_q = pi_iq.OutF;                             // q 轴电压输出
 }
 

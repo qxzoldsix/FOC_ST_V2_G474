@@ -1,17 +1,62 @@
 {
   "configurations": [
     {
-      "name": "windows-gcc-x64",
-      "includePath": [
-        "${workspaceFolder}/**"
-      ],
-      "compilerPath": "gcc",
-      "cStandard": "${default}",
-      "cppStandard": "${default}",
-      "intelliSenseMode": "windows-gcc-x64",
+      "name": "STM32G474-Keil-ARMCLANG",
+      "compilerPath": "${env:LOCALAPPDATA}/Keil_v5/ARM/ARMCLANG/bin/armclang.exe",
       "compilerArgs": [
-        ""
-      ]
+        "--target=arm-arm-none-eabi",
+        "-mcpu=cortex-m4",
+        "-mfpu=fpv4-sp-d16",
+        "-mfloat-abi=hard"
+      ],
+      "intelliSenseMode": "windows-clang-arm",
+      "includePath": [
+        "${workspaceFolder}/Core/Inc",
+        "${workspaceFolder}/USB_Device/App",
+        "${workspaceFolder}/USB_Device/Target",
+        "${workspaceFolder}/Drivers/STM32G4xx_HAL_Driver/Inc",
+        "${workspaceFolder}/Drivers/STM32G4xx_HAL_Driver/Inc/Legacy",
+        "${workspaceFolder}/Middlewares/ST/STM32_USB_Device_Library/Core/Inc",
+        "${workspaceFolder}/Middlewares/ST/STM32_USB_Device_Library/Class/CDC/Inc",
+        "${workspaceFolder}/Drivers/CMSIS/Device/ST/STM32G4xx/Include",
+        "${workspaceFolder}/Drivers/CMSIS/Include",
+        "${workspaceFolder}/pmsmConfig_Inc",
+        "${workspaceFolder}/taskManager",
+        "${workspaceFolder}/LCD",
+        "${workspaceFolder}/Key",
+        "${workspaceFolder}/Foc_Control/inc",
+        "${workspaceFolder}/UserSoftware/inc",
+        "${workspaceFolder}/Flux/inc",
+        "${workspaceFolder}/CanBus/inc"
+      ],
+      "defines": [
+        "USE_HAL_DRIVER",
+        "STM32G474xx"
+      ],
+      "cStandard": "c99",
+      "cppStandard": "c++14",
+      "browse": {
+        "path": [
+          "${workspaceFolder}/Core/Inc",
+          "${workspaceFolder}/USB_Device/App",
+          "${workspaceFolder}/USB_Device/Target",
+          "${workspaceFolder}/Drivers/STM32G4xx_HAL_Driver/Inc",
+          "${workspaceFolder}/Drivers/STM32G4xx_HAL_Driver/Inc/Legacy",
+          "${workspaceFolder}/Middlewares/ST/STM32_USB_Device_Library/Core/Inc",
+          "${workspaceFolder}/Middlewares/ST/STM32_USB_Device_Library/Class/CDC/Inc",
+          "${workspaceFolder}/Drivers/CMSIS/Device/ST/STM32G4xx/Include",
+          "${workspaceFolder}/Drivers/CMSIS/Include",
+          "${workspaceFolder}/pmsmConfig_Inc",
+          "${workspaceFolder}/taskManager",
+          "${workspaceFolder}/LCD",
+          "${workspaceFolder}/Key",
+          "${workspaceFolder}/Foc_Control/inc",
+          "${workspaceFolder}/UserSoftware/inc",
+          "${workspaceFolder}/Flux/inc",
+          "${workspaceFolder}/CanBus/inc"
+        ],
+        "limitSymbolsToIncludedHeaders": true
+      }
     }
   ],
   "version": 4

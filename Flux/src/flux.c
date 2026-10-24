@@ -91,9 +91,8 @@ static void Deadtime_Comp_ab(float *Ualpha_out, float *Ubeta_out)
 {
     float sign_u, sign_v, sign_w;
     float v_dead, v_alpha_dist, v_beta_dist;
-    float v_cmd_scale;
 
-    /* 死区等效电压: 24V * 0.02 ≈ 0.48V（可根据实测调整） */
+    /* 沿用既有 0.3 V 和采样极性约定，幅值与符号待硬件标定。 */
     #define V_DEADTIME  0.3f
 
     /* 电流极性 */
@@ -110,13 +109,11 @@ static void Deadtime_Comp_ab(float *Ualpha_out, float *Ubeta_out)
     v_alpha_dist = 0.6666667f * v_dead * (sign_u - 0.5f * sign_v - 0.5f * sign_w);
     v_beta_dist  = 0.5773503f * v_dead * (sign_v - sign_w);  // 1/√3
 
-    /*
-     * SVPWM applies Ualpha/Ubeta through Svpwm_Km_BackwS and the real DC bus.
-     * The observer integrates volts, so use the same effective voltage scale.
-     */
-    v_cmd_scale = Volt_CurrPara.Svpwm_Km_BackwS * Volt_CurrPara.BUS_Voltage;
-    *Ualpha_out = Svpwm_dq.Ualpha * v_cmd_scale + v_alpha_dist;
-    *Ubeta_out  = Svpwm_dq.Ubeta  * v_cmd_scale + v_beta_dist;
+    /* 标幺只存在于控制命令；观测器积分必须使用 V。由最终 CCR 重构，
+     * 同时包含调制比例、矢量限幅和整数截断，不再重复乘 Vbus。 */
+    PWM_ReconstructVoltage(Ualpha_out, Ubeta_out);
+    *Ualpha_out += v_alpha_dist;
+    *Ubeta_out  += v_beta_dist;
 }
 
 /**

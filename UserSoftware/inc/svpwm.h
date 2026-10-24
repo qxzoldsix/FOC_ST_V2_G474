@@ -13,8 +13,8 @@
 #define PWM_HalfPerMax    ((TIM1_ARR + 1) / 2)  // 2000
 
 typedef struct 	{ 
-        float  Ualpha; 	
-        float  Ubeta;	
+        float  Ualpha; 	// alpha 电压 float pu，基准 CONTROL_VOLTAGE_BASE_V
+        float  Ubeta;	// beta 电压 float pu，与 VF/电流环同基准
         float  Ta;	
         float  Tb;		
         float  Tc;		
@@ -32,4 +32,6 @@ typedef struct 	{
 
 extern SVPWM  Svpwm_dq;
 void svpwm_Cale(p_SVPWM pV);
+float PWM_GetVoltageLimitPu(void); // 实测母线允许的电压矢量幅值 (pu)
+void PWM_ReconstructVoltage(float *u_alpha_v, float *u_beta_v); // 最终 CCR 的理想桥电压 (V)
 #endif

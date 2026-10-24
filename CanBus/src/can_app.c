@@ -71,12 +71,6 @@ static uint8_t can_app_node_state = NODE_STATE_OPERATIONAL;
 uint32_t can_app_rx_cnt = 0;
 uint32_t can_app_tx_cnt = 0;
 uint32_t can_app_err_cnt = 0;
-static const char can_app_sw_version_text[] = CAN_APP_SW_VERSION_TEXT;
-
-const char *CAN_App_GetSoftwareVersionText(void)
-{
-    return can_app_sw_version_text;
-}
 
 /* ========== SDO 读寄存器 ========== */
 static int8_t SDO_ReadRegister(SDO_Register reg, uint32_t *value)
@@ -102,10 +96,10 @@ static int8_t SDO_ReadRegister(SDO_Register reg, uint32_t *value)
         case REG_UV_THRESH:     *value = SDO_FloatToRaw(UV_THRESHOLD_V); break;
         case REG_OC_BUS_THRESH: *value = SDO_FloatToRaw(OC_BUS_THRESHOLD_A); break;
         case REG_OT_THRESH:     *value = SDO_FloatToRaw(NTC_OT_FAULT_C); break;
-        case REG_VF_VOLT_MAX:   *value = SDO_FloatToRaw(VF_VOLTAGE_MAX); break;
+        case REG_VF_VOLT_MAX:   *value = SDO_FloatToRaw(PWM_GetVoltageLimitPu()); break;
         case REG_VF_FREQ_MAX:   *value = SDO_FloatToRaw(VF_FREQ_MAX); break;
         case REG_VF_RAMP_GRAD:  *value = SDO_FloatToRaw(VF_HzRamp.XieLv_Grad); break;
-        case REG_DEVICE_ID:     *value = 0x20260718; break;
+        case REG_DEVICE_ID:     *value = CAN_APP_SW_VERSION_CODE; break;
         case REG_SW_VERSION:    *value = CAN_APP_SW_VERSION_CODE; break;
         case REG_NODE_ID:       *value = CAN_APP_NODE_ID; break;
         case REG_PARAM_ID_STATE:

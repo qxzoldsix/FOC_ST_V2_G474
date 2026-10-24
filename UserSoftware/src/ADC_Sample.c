@@ -39,13 +39,11 @@ _RAM_FUNC void Foc_Para_Calc(void){
                             + Volt_CurrPara.PhaseW_Curr * Svpwm_dq.SVPTc)
                             / (float)(TIM1_ARR + 1);
 
-    /* SVPWM bus voltage feedforward: Km = Vnom / Vbus */
-    if (Volt_CurrPara.BUS_Voltage > 1.0f) {
-        Volt_CurrPara.Svpwm_Km_BackwS = NOMINAL_BUS_VOLTAGE / Volt_CurrPara.BUS_Voltage;
-        if (Volt_CurrPara.Svpwm_Km_BackwS > 1.3f) Volt_CurrPara.Svpwm_Km_BackwS = 1.3f;
-        if (Volt_CurrPara.Svpwm_Km_BackwS < 0.7f) Volt_CurrPara.Svpwm_Km_BackwS = 0.7f;
+    /* 固定标幺基准下的母线补偿；不截断比例，限幅由统一电压圆负责。 */
+    if (isfinite(Volt_CurrPara.BUS_Voltage) && Volt_CurrPara.BUS_Voltage > 1.0f) {
+        Volt_CurrPara.Svpwm_Km_BackwS = CONTROL_NOMINAL_BUS_VOLTAGE_V / Volt_CurrPara.BUS_Voltage;
     } else {
-        Volt_CurrPara.Svpwm_Km_BackwS = 1.0f;
+        Volt_CurrPara.Svpwm_Km_BackwS = 0.0f;
     }
 }
 void ZeroCurrOffset_Calibration(void)
@@ -86,8 +84,4 @@ void ZeroCurrOffset_Calibration(void)
 //    Volt_CurrPara.BUS_Voltage = (float)ADCSampPara.BUS_Voltage * VBUS_SCALE;
 //    Volt_CurrPara.Vdc = Volt_CurrPara.BUS_Voltage;
 
-//    if (Volt_CurrPara.Vdc > 1.0f)
-//        Volt_CurrPara.Svpwm_Km_BackwS = 1.0f / Volt_CurrPara.Vdc;
-//    else
-//        Volt_CurrPara.Svpwm_Km_BackwS = 1.0f;
 //}

@@ -52,15 +52,15 @@ void PI_Init(void)
     /* ---- d 轴电流 PI：输出为 SVPWM 标幺电压 ---- */
     pi_id.Kp   = 0.01f;
     pi_id.Ki   = 0.00001f;
-    pi_id.Umax = FOC_VOLTAGE_PU_MAX;
-    pi_id.Umin = -FOC_VOLTAGE_PU_MAX;
+    pi_id.Umax = PWM_GetVoltageLimitPu();
+    pi_id.Umin = -pi_id.Umax;
 
     /* ---- q 轴电流 PI ---- */
     pi_iq.Kp   = 0.01f;
     pi_iq.Ki   = 0.00001f;
     // Umax/Umin 在 Idq_FOC 中根据电压圆约束动态设置
-    pi_iq.Umax = FOC_VOLTAGE_PU_MAX;
-    pi_iq.Umin = -FOC_VOLTAGE_PU_MAX;
+    pi_iq.Umax = PWM_GetVoltageLimitPu();
+    pi_iq.Umin = -pi_iq.Umax;
 
     PI_ResetRuntime(&pi_spd);
     PI_ResetRuntime(&pi_id);

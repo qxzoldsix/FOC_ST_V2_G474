@@ -17,7 +17,40 @@ static uint16_t svpwm_to_ccr(float t)
 
     return (uint16_t)ccr;
 }
+float PWM_GetVoltageLimitPu(void)
+{
+    float vbus = Volt_CurrPara.BUS_Voltage;
+    return (isfinite(vbus) && vbus > 1.0f) ?
+           CONTROL_LINEAR_MODULATION_MARGIN * vbus / CONTROL_NOMINAL_BUS_VOLTAGE_V : 0.0f;
+}
+
+void PWM_ReconstructVoltage(float *u_alpha_v, float *u_beta_v)
+{
+    float vbus = Volt_CurrPara.BUS_Voltage;
+    float duty_u = (float)Svpwm_dq.SVPTa / (float)(TIM1_ARR + 1U);
+    float duty_v = (float)Svpwm_dq.SVPTb / (float)(TIM1_ARR + 1U);
+    float duty_w = (float)Svpwm_dq.SVPTc / (float)(TIM1_ARR + 1U);
+
+    if (!isfinite(vbus) || vbus <= 1.0f) vbus = 0.0f;
+    *u_alpha_v = 0.666666667f * vbus * (duty_u - 0.5f * duty_v - 0.5f * duty_w);
+    *u_beta_v = 0.577350269f * vbus * (duty_v - duty_w);
+}
+
 void svpwm_Cale(p_SVPWM pV){
+    float voltage_limit = PWM_GetVoltageLimitPu();
+
+    if (voltage_limit <= 0.0f ||
+        !isfinite(pV->Ualpha) || !isfinite(pV->Ubeta)) {
+        pV->Ualpha = 0.0f;
+        pV->Ubeta = 0.0f;
+    } else {
+        float voltage_mag = hypotf(pV->Ualpha, pV->Ubeta);
+        if (voltage_mag > voltage_limit) {
+            float scale = voltage_limit / voltage_mag;
+            pV->Ualpha *= scale;
+            pV->Ubeta *= scale;
+        }
+    }
     pV->tmp1= pV->Ubeta;   //Vref1
     pV->tmp2= pV->Ubeta*0.5f + pV->Ualpha*0.8660254f ;//vref2
     pV->tmp3= pV->tmp2 - pV->tmp1;   // Vref3 = (√3/2)Ualpha - 0.5*Ubeta

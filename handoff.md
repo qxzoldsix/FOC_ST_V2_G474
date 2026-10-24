@@ -586,3 +586,56 @@ g(i) 使用滞回或平滑过零，阈值依据 ADC 噪声/纹波标定。电流
 ### 2026-10-24 更新软件版本
 
 CAN 应用软件版本更新为 261024A，CAN_APP_SW_VERSION_CODE=0x0261024AUL，CAN_APP_SW_VERSION_TEXT 为 261024A。需重新编译并烧录后生效。
+
+### 2026-10-24 修复 VS Code 变量跳转与悬停配置
+
+实际已安装 C/C++ Extension Pack，但缺少提供语义功能的 ms-vscode.cpptools。现通过 VS Code CLI 安装并确认 ms-vscode.cpptools 1.34.4。原 c_cpp_properties 使用不存在于 PATH 的 gcc 和 windows-gcc-x64；现改用本机 Keil ARMCLANG 6.22，目标 Cortex-M4/硬浮点，从 uvprojx 同步 17 个 include 路径及 USE_HAL_DRIVER、STM32G474xx 宏，配置为 windows-clang-arm。启用 IntelliSense 和悬停，添加扩展推荐和编码自动识别。
+
+验证所有 include 目录存在、JSON 有效，已安装扩展的 schema 支持所选模式；使用实际 ARMCLANG 对 motorControl.c、can_app.c 执行相同目标/头文件参数的语法检查通过。尚未从编辑器界面验证 F12 和悬停；需重新加载 VS Code 窗口并等待索引完成。现有 launch.json 仍是历史桌面 GDB 调试配置，本轮未修改，不可据此认为已配置 STM32 下载调试。
+
+### 2026-10-24 撤回伏特接口迁移，统一标幺基准和 Q 格式规范
+
+用户要求撤销上一轮全部控制电压改为伏特的迁移，已恢复：VF 的 TargetVolt/V_amp、Vd/Vq、SVPWM 输入和辨识注入仍为 float 标幺；电流 PI 增益恢复 0.01/0.00001，CAN 增益/电压寄存器仍为原标幺单位，LCD 仍显示 pu，版本保持 261024A。先前 261024B 的伏特制 AXF/HEX 已由本轮全量编译覆盖；没有烧录。此前 VS Code 配置和用户 RTE 文件修改保留。
+
+本轮标幺修正：
+
+- 新增 ControlUnits.h，固定电压基准 CONTROL_VOLTAGE_BASE_V=12/sqrt(3)=6.928203 V。该电压是等幅 Clarke 的电压矢量幅值，平衡正弦时为相电压峰值。0.5 pu 对应约 3.464 V，1 pu 不代表当前母线电压，也不代表 1 V。
+- 母线补偿仍采用 Km=12/Vbus，删除 0.7～1.3 的任意截断；无效母线时 Km=0。Km 只在 SVPWM 转 CCR 时使用一次。
+- PWM_GetVoltageLimitPu() 统一返回 0.95*Vbus/12，12 V 为 0.95 pu、24 V 为 1.9 pu。VF、电流 PI 和最终 SVPWM 采用同一电压圆限制；超限矢量等比例缩小，电流 PI 滤波输出也按本拍上限限制。VF 启动检查拒绝非法/超出当前母线能力的目标电压。
+- 观测器不再使用缺少 1/sqrt(3) 比例的 command*Km*Vbus。观测器与辨识共用 PWM_ReconstructVoltage()，从最终 CCR 和实测母线重构理想桥电压（V），再沿用原有 0.3 V 死区项及其采样极性约定。未更改电机参数、速度环符号、启动模式或死区补偿符号；硬件压降和采样时序仍需实测。
+
+Q 格式规范（这轮只选型，不将当前 float 算法改写为定点）：以下 Qm.n 的 m 不包含符号位；有符号总位数为 1+m+n。
+
+| 信号 | 当前单位/实现 | 后续定点格式 | 范围与说明 |
+|---|---|---|---|
+| VF 目标/幅值、Vd/Vq、alpha/beta 电压命令 | 同一固定电压基准的 float pu | int32_t Q7.24 | [-128,128)，raw=round(pu*2^24)；0.5 pu 为 8388608。允许高母线时超过 1 pu，避免 Q1.15 的范围不足 |
+| 相电流、Id/Iq、速度 PI 输出 | float A | int32_t Q15.16 | [-32768,32768) A；电流不额外标幺化 |
+| 机械转速及其斜坡 | float rpm | int32_t Q15.16 | 满足当前转速范围，并可保留斜坡小数 |
+| VF/估算电频率 | float Hz | int32_t Q11.20 | [-2048,2048) Hz，覆盖现有 400/500 Hz 上限 |
+| 三角函数值 | float | int32_t Q1.30 | [-2,2)，可精确表示 +1 和 -1 |
+| 电角度 | float rad；查表索引 0～4095 | uint32_t UQ0.32 周 | [0,1) 表示一周；不是弧度。查表索引用 raw>>20，现有索引保持不变 |
+| 磁链 | float Wb | int32_t Q1.30 | [-2,2) Wb，适合当前毫韦伯量级，执行迁移前还需核验故障瞬态范围 |
+
+电流/速度 PI 和观测器内部本轮保留 float，不能简单把上述整数原码填进现有 Watch 或 CAN float 字段。未来定点迁移必须逐条定义乘法移位、64 位中间量、积分器范围、舍入和饱和；例如 Q24 电压乘 Q30 sin/cos 需要 int64_t 中间乘积后右移 30 位。Q 格式不会修复标幺基准或采样极性错误；本轮不新增无实际调用的定点运算函数。
+
+验证：真实 ADC 母线补偿、SVPWM、VF、PI 和观测器电压入口的主机回归通过 3240 组角度/母线/限幅案例；8/12/24/30 V 下相同 0.5 pu 重构约 3.464 V，12 V 下未饱和 CCR 与旧版逐点完全相同；额外检查 VF 大于 1 pu、母线下降、零母线、非法指令和 Q7.24 范围/精度。Keil ARMCLANG 6.22 全量重编译与链接生成 AXF/HEX，0 错误、16 个原有 LCD 字库编码警告。未烧录或实机验证，观测器输入比例修正后需要重新核对启动和估速。
+
+
+### 2026-10-25 统一 CAN 版本寄存器
+
+按用户要求，REG_DEVICE_ID（0x1000）取消写死的 0x20260718，改为读取 CAN_APP_SW_VERSION_CODE，与 REG_SW_VERSION（0x1001）同源。保留旧寄存器名称和地址，并更正注释为版本码。按既有 YYMMDD+修订字母格式，将版本更新为 261025A，版本码 0x0261025AUL，表示 2026-10-25 A 版。已检查差异，未重新编译或烧录。
+
+
+### 2026-10-25 清理未使用的版本字符串接口
+
+全工程搜索确认 CAN_App_GetSoftwareVersionText 没有调用，删除其声明、定义、内部字符串以及唯一被它使用的 CAN_APP_SW_VERSION_TEXT 宏。实际 CAN 版本查询仍使用 CAN_APP_SW_VERSION_CODE=0x0261025AUL，0x1000/0x1001 读取行为不变；后续只需维护版本码一个宏。已检查差异，未重新编译或烧录。
+
+### 2026-10-25 未使用接口与空实现审查
+
+本次按用户要求检查与已删除版本字符串接口类似的情况，仅审查和记录，未删除源码或修改控制行为。扫描应用代码时剔除注释/字符串，核对函数指针引用、实际入口和旧链接映射；链接器移除的函数可能已经内联，不能据此认定无用。中断向量、HAL 弱函数回调、USB 回调和备用观测器不按无普通调用处理。
+
+可清理的遗留：CAN_App_Process() 只有声明/定义，无调用且为空函数；key_bsp.c 的 key_ports/key_pins/key_bsp 仅定义，引用只存在于已注释的旧初始化代码；headline.h 的 LED_ON/LED_OFF 和 CAN 的 COB_SYNC 宏未使用。ADC_Sample.c 的两个 DMA 缓冲区 extern 在本文件未使用，但数组在 main.c/NTC.c 的实际 DMA/温度流程仍有用途，不能删除真实数组。Pwm_Input.c 只有已注释代码，Pwm_output.c 只有旧模块说明，两者未列入当前 Keil 源文件；LCD/display.c 只有 include，但仍列入 Keil 工程。
+
+未接入/未实现而非纯冗余：CAN_App_EMCY_Send() 已实现但无调用，保护停机不经该接口发送 EMCY（现有状态 PDO 仍上报 Fault_DTC）；IPD_SixPulse_Injection/IPD_HFI_Injection 均无调用且为 TODO 空壳。Balance_Control() 有任务调度引用但为空；KEY_RUN() 会执行按键扫描，启动/停机、切模式、改频率的动作分支仍为 TODO。Motor_RunPreposition() 在 MODE=4 可达但为空，未实现注释中的定位流程；模式进入流程可使能 PWM，不能把该模式当作已完成且安全的预定位控制。MODE=6/7 虽算法未完成，当前会显式调用统一停机，不能与无用空函数混为一谈。
+
+FAULT_HALL/LOCK/PHASE_LOSS/START_FAIL/HARD_FAULT 等宏只有定义，没有对应置位检测；这不代表相关保护已经实现。CONTROL_VOLTAGE_BASE_V 目前用于基准定义/说明，没有直接进入执行表达式，实际换算通过 CONTROL_NOMINAL_BUS_VOLTAGE_V、Km 与 SVPWM 几何系数完成；它属于单位契约，不等于已接入的换算函数。LCD 未调用绘图工具和观测器编译期备选函数保留，避免把通用工具或算法切换入口误删。

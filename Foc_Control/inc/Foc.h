@@ -12,18 +12,17 @@
 #define  IPARK_DEFAULTS {0,0,0,0,0,0,0}  
 
 #define CURRENT_USE_W_AS_V  0
-#define FOC_VOLTAGE_PU_MAX  0.95f
 
 typedef struct 
 {	  
-	float V_d;                 // d 轴电压输出 (pu)
-	float V_q;                 // q 轴电压输出 (pu)
-	float V_amp;               // VF 电压幅值 (pu)
+	float V_d;                 // d 轴电压，float pu，基准见 ControlUnits.h
+	float V_q;                 // q 轴电压，float pu，与 VF/SVPWM 同基准
+	float V_amp;               // VF 电压幅值，float pu（不是 Q 格式原码）
 	float  SpeedRPM;			// 机械转速 (RPM)
 	float CurrentHz;			// 当前电频率 (Hz)
 	float OpenTheta;			// VF 开环角度 (rad)
 	float TargetHz;				// 目标电频率 (Hz)
-	float TargetVolt;			// VF 目标电压 (pu)
+	float TargetVolt;			// VF 目标电压 float pu；0.5 pu = 3.464 V 相电压峰值
 	uint16_t   Fault_DTC;      // 故障码（位掩码）
 	int16_t IQAngle;            // 电角度 (0~4095)
 	uint8_t Control_Mode;		// 0停机 1有感 2无感直闭环 3VF 4预定位 5辨识 6I/F启动 7HFI启动

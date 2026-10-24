@@ -7,6 +7,7 @@
 #define __ADC_SAMPLE_H_
 
 #include "headline.h"
+#include "ControlUnits.h"
 
 #define V_REF        3.3f    // ADC 参考电压 3.3V
 #define ADC_MAX      4096.0f // 12位 ADC 最大值 2^12 = 4096
@@ -24,7 +25,6 @@
 #define Curr_Ratio    (V_REF / ADC_MAX/SenseRes/Curr_OP)
 #define OFFSET_CALIB_CNT 1000
 
-#define NOMINAL_BUS_VOLTAGE  12.0f  // 标称母线电压 (V), 用于 SVPWM 前馈补偿
 
 typedef struct {
     uint16_t PhaseU_Raw;    // U 相电流原始采样值
@@ -49,7 +49,7 @@ typedef struct {
 
 	float   BUS_Voltage ;  // 母线电压 DC Bus Voltage
 
-	float   Svpwm_Km_BackwS;
+	float   Svpwm_Km_BackwS; // 无量纲：固定标称母线/实测母线，仅 PWM 使用
 
 }Volt_Curr;
 extern  Volt_Curr   Volt_CurrPara;

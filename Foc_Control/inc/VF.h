@@ -13,8 +13,7 @@ extern "C" {
 
 
 
-#define VF_VOLTAGE_MIN      0.01f    // VF 最低输出电压 (pu)
-#define VF_VOLTAGE_MAX      FOC_VOLTAGE_PU_MAX
+#define VF_VOLTAGE_MIN      0.01f    // float pu，固定基准见 ControlUnits.h；定点规范 Q7.24
 #define VF_FREQ_MAX         400.0f   // VF 最高输出频率
 #define VF_TS               5e-5f    // 控制周期 50µs (20kHz)
 

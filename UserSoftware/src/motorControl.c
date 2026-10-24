@@ -371,8 +371,8 @@ uint8_t Motor_ControlStart(uint8_t mode, float target_speed_rpm)
     }
 
     if (Motor_ModeIsVfFamily(requested_mode) &&
-        (motor.TargetVolt <= VF_VOLTAGE_MIN ||
-         motor.TargetVolt > VF_VOLTAGE_MAX)) {
+        (!isfinite(motor.TargetVolt) || motor.TargetVolt <= VF_VOLTAGE_MIN ||
+         motor.TargetVolt > PWM_GetVoltageLimitPu())) {
         return 0U;
     }
 

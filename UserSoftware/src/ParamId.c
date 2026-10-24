@@ -68,21 +68,11 @@ static void ParamId_SetOutput(float vd, float vq)
 
 static float ParamId_AppliedAxisVoltage(ParamIdAxis axis)
 {
-    float duty_u = (float)Svpwm_dq.SVPTa / (float)(TIM1_ARR + 1U);
-    float duty_v = (float)Svpwm_dq.SVPTb / (float)(TIM1_ARR + 1U);
-    float duty_w = (float)Svpwm_dq.SVPTc / (float)(TIM1_ARR + 1U);
     float voltage_alpha;
     float voltage_beta;
 
-    /*
-     * 不能用 command_pu * Vbus/2 估算电压：当前SVPWM在alpha、beta轴的
-     * 命令增益不同。这里直接由实际CCR占空比反算平均相电压，再做Clarke
-     * 变换；公共模分量会在变换中自动抵消。
-     */
-    voltage_alpha = 0.666666667f * Volt_CurrPara.BUS_Voltage *
-                    (duty_u - 0.5f * duty_v - 0.5f * duty_w);
-    voltage_beta = 0.577350269f * Volt_CurrPara.BUS_Voltage *
-                   (duty_v - duty_w);
+    /* 注入命令仍为 pu，辨识计算使用与观测器一致的 CCR 重构电压 (V)。 */
+    PWM_ReconstructVoltage(&voltage_alpha, &voltage_beta);
 
     return (axis == ID_AXIS_D) ? voltage_alpha : voltage_beta;
 }

@@ -7,8 +7,7 @@
 
 /* ========== 节点配置 ========== */
 #define CAN_APP_NODE_ID       0x01
-#define CAN_APP_SW_VERSION_CODE  0x0261024AUL
-#define CAN_APP_SW_VERSION_TEXT  "261024A"
+#define CAN_APP_SW_VERSION_CODE  0x0261025AUL
 
 /* ========== CAN ID (11-bit) ========== */
 #define COB_NMT             0x000           // 网络管理
@@ -97,12 +96,12 @@ typedef enum {
     REG_SPEED_KP      = 0x0000,
     REG_SPEED_KI      = 0x0001,
     REG_SPEED_UMAX    = 0x0002,
-    REG_ID_KP         = 0x0003,
-    REG_ID_KI         = 0x0004,
-    REG_ID_UMAX       = 0x0005,
-    REG_IQ_KP         = 0x0006,
-    REG_IQ_KI         = 0x0007,
-    REG_IQ_UMAX       = 0x0008,
+    REG_ID_KP         = 0x0003, // pu/A，电压基准见 ControlUnits.h
+    REG_ID_KI         = 0x0004, // pu/(A·拍)，已包含离散周期
+    REG_ID_UMAX       = 0x0005, // pu，只读，按母线更新
+    REG_IQ_KP         = 0x0006, // pu/A
+    REG_IQ_KI         = 0x0007, // pu/(A·拍)，已包含离散周期
+    REG_IQ_UMAX       = 0x0008, // pu，只读，d 轴剩余电压裕量
     REG_PLL_KP        = 0x0009,
     REG_PLL_KI        = 0x000A,
     REG_OBS_GAIN      = 0x000B,
@@ -112,10 +111,10 @@ typedef enum {
     REG_UV_THRESH     = 0x000F,
     REG_OC_BUS_THRESH = 0x0010,
     REG_OT_THRESH     = 0x0011,
-    REG_VF_VOLT_MAX   = 0x0012,
+    REG_VF_VOLT_MAX   = 0x0012, // pu，只读，当前母线允许的矢量幅值
     REG_VF_FREQ_MAX   = 0x0013,
     REG_VF_RAMP_GRAD  = 0x0014,
-    REG_DEVICE_ID     = 0x1000,  // 只读: 设备ID
+    REG_DEVICE_ID     = 0x1000,  // 只读: 版本码（保留旧名称/地址，与 REG_SW_VERSION 同源）
     REG_SW_VERSION    = 0x1001,  // 只读: 软件版本
     REG_NODE_ID       = 0x1002,  // 节点ID
     REG_PARAM_ID_STATE = 0x1010, // 只读: step/error/done/valid
@@ -131,7 +130,6 @@ int8_t CAN_App_PDO1_TX_Send(void);
 int8_t CAN_App_PDO2_TX_Send(void);
 int8_t CAN_App_Heartbeat_Send(void);
 int8_t CAN_App_EMCY_Send(uint16_t fault_code);
-const char *CAN_App_GetSoftwareVersionText(void);
 
 /* 用户需要在应用层实现的回调 */
 extern void CAN_App_OnNMT(uint8_t cmd);
