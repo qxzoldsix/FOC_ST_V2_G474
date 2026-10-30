@@ -856,42 +856,25 @@ void LCD_Init(void)
 	LCD_WR_REG(0x21); 
 
 	LCD_WR_REG(0x29); 
-		LCD_Fill(0,0,LCD_W,LCD_H,BLACK);	
-		LCD_Fill(0, 0, LCD_W, 21, DARKBLUE);
-		LCD_ShowString(3, 0, (uint8_t *)"noFoc", WHITE, DARKBLUE, 24, 0);
-		LCD_ShowString(75, 5, (uint8_t *)"READY", GREEN, DARKBLUE, 12, 0);
-		LCD_ShowString(135, 5, (uint8_t *)"Vbus:", GRAY, DARKBLUE, 12, 0);
-		LCD_ShowString(222, 5, (uint8_t *)"V", GRAY, DARKBLUE, 12, 0);
-
-		LCD_Fill(0, 22, LCD_W, 42, LGRAY);
-		LCD_DrawLine(0, 21, LCD_W, 21, GRAYBLUE);
-		LCD_ShowString(5, 24, (uint8_t *)"Freq:", WHITE, LGRAY, 12, 0);
-		LCD_ShowString(80, 24, (uint8_t *)"Hz", GRAY, LGRAY, 12, 0);
-		LCD_DrawLine(105, 24, 105, 38, GRAYBLUE);
-		LCD_ShowString(115, 24, (uint8_t *)"Volt:", WHITE, LGRAY, 12, 0);
-		LCD_ShowString(195, 24, (uint8_t *)"pu", GRAY, LGRAY, 12, 0);
-
-		LCD_Fill(0, 42, LCD_W, 43, GRAYBLUE);
-		LCD_ShowString(5, 45, (uint8_t *)"Mode:", WHITE, BLACK, 12, 0);
-		LCD_ShowString(50, 45, (uint8_t *)" POS ", CYAN, BLACK, 12, 0);
-
-		LCD_DrawLine(0, 57, LCD_W, 57, GRAYBLUE);
-		LCD_ShowString(5,  60, (uint8_t *)"Iq",   WHITE,  BLACK, 12, 0);
-		LCD_ShowString(5,  78, (uint8_t *)"Vel",  WHITE,  BLACK, 12, 0);
-		LCD_ShowString(5,  96, (uint8_t *)"Pos",  WHITE,  BLACK, 12, 0);
-		LCD_ShowString(5, 114, (uint8_t *)"Tor",  WHITE,  BLACK, 12, 0);
-
-		LCD_DrawLine(42,  59, 42,  129, GRAYBLUE);
-		LCD_DrawLine(160, 59, 160, 129, GRAYBLUE);
-		LCD_ShowString(96, 60, (uint8_t *)"->",     GRAY,   BLACK, 12, 0);
-		LCD_ShowString(96, 78, (uint8_t *)"->",     GRAY,   BLACK, 12, 0);
-		LCD_ShowString(96, 96, (uint8_t *)"->",     GRAY,   BLACK, 12, 0);
-		LCD_ShowString(96,114, (uint8_t *)"->",     GRAY,   BLACK, 12, 0);
-		LCD_ShowString(168,60, (uint8_t *)"A",      GRAY,   BLACK, 12, 0);
-		LCD_ShowString(168,78, (uint8_t *)"r/s",    GRAY,   BLACK, 12, 0);
-		LCD_ShowString(168,96, (uint8_t *)"rad",    GRAY,   BLACK, 12, 0);
-		LCD_ShowString(168,114,(uint8_t *)"N/m",    GRAY,   BLACK, 12, 0);
-
-		LCD_DrawLine(0, 130, LCD_W, 130, GRAYBLUE);
-		
+    /* 使用低亮度灰色配色；左右两列各宽 120 像素，标签、数值和单位按固定位置对齐。 */
+    LCD_Fill(0, 0, LCD_W, LCD_H, BLACK);
+    LCD_ShowString(3, 3, (const uint8_t *)"noFoc  Mode:", GRAY, BLACK, 12, 0);
+    LCD_ShowString(81, 3, (const uint8_t *)"[READY]", LGRAY, BLACK, 12, 0);
+    LCD_DrawLine(0, 19, LCD_W - 1, 19, GRAY);
+    LCD_ShowString(3, 23, (const uint8_t *)"Vbus", GRAY, BLACK, 12, 0);
+    LCD_ShowString(93, 23, (const uint8_t *)"V", GRAY, BLACK, 12, 0);
+    LCD_ShowString(3, 41, (const uint8_t *)"VF Hz", GRAY, BLACK, 12, 0);
+    LCD_ShowString(93, 41, (const uint8_t *)"Hz", GRAY, BLACK, 12, 0);
+    LCD_ShowString(123, 41, (const uint8_t *)"VF V", GRAY, BLACK, 12, 0);
+    LCD_ShowString(213, 41, (const uint8_t *)"pu", GRAY, BLACK, 12, 0);
+    LCD_ShowString(3, 59, (const uint8_t *)"FHz", GRAY, BLACK, 12, 0);
+    LCD_ShowString(93, 59, (const uint8_t *)"Hz", GRAY, BLACK, 12, 0);
+    LCD_ShowString(123, 59, (const uint8_t *)"PLL", GRAY, BLACK, 12, 0);
+    /* Est/Ang 标签及单位随模式切换更新；Est 表示观测器估算的电频率，单位为 Hz。 */
+    LCD_ShowString(3, 95, (const uint8_t *)"Psi", GRAY, BLACK, 12, 0);
+    LCD_ShowString(93, 95, (const uint8_t *)"Wb", GRAY, BLACK, 12, 0);
+    LCD_ShowString(3, 113, (const uint8_t *)"T1", GRAY, BLACK, 12, 0);
+    LCD_ShowString(93, 113, (const uint8_t *)"C", GRAY, BLACK, 12, 0);
+    LCD_ShowString(123, 113, (const uint8_t *)"T2", GRAY, BLACK, 12, 0);
+    LCD_ShowString(213, 113, (const uint8_t *)"C", GRAY, BLACK, 12, 0);
 }

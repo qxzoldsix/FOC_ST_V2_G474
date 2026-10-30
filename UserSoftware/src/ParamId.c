@@ -9,7 +9,6 @@
 #include "ParamId.h"
 
 /* 所有时间参数都基于ADC/FOC的20kHz调用周期，禁止在低频任务中调用。 */
-#define ID_CONTROL_TS_S              5.0e-5f
 #define ID_ALIGN_TICKS               3000U
 #define ID_RS_SETTLE_TICKS           1000U
 #define ID_RS_AVERAGE_SAMPLES        512U
@@ -165,7 +164,7 @@ static uint8_t ParamId_EstimateInductance(ParamIdAxis axis, float *inductance)
     float i_inf;
     float ratio;
     float estimate;
-    float elapsed = (float)ID_L_SAMPLE_TICKS * ID_CONTROL_TS_S;
+    float elapsed = (float)ID_L_SAMPLE_TICKS * FOC_CONTROL_TS_S;
 
     if (inductance == NULL || pid.Rs <= 0.0f) {
         return 0U;

@@ -35,7 +35,7 @@ void Flux_Observer_Init(void)
     Foc_observer.Gain = 5000.0f;       // 磁链幅值补偿增益（过大→震荡啸叫，过小→收敛慢）
 
     /* 控制周期必须先设，后续 PI 参数计算依赖它 */
-    Foc_observer.Ctrl_ts = 5e-5f;      // 控制周期 20kHz (Ts = 1/20000 = 50µs)
+    Foc_observer.Ctrl_ts = FOC_CONTROL_TS_S; // 与电流环使用同一控制周期
 
     /* ---- PLL 参数 ---- */
 #if OBSERVER_TYPE == OBS_HYBRID_ACTIVE_FLUX

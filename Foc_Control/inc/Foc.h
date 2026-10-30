@@ -6,6 +6,11 @@
 #ifndef __FOC_H_
 #define __FOC_H_
 #include "headline.h"
+
+/* 电流环统一频率及周期；实际 ADC/PWM 触发频率必须与此一致。 */
+#define FOC_CONTROL_FREQ_HZ 20000U
+#define FOC_CONTROL_TS_S    (1.0f / FOC_CONTROL_FREQ_HZ)
+
 #define  Control_FB_DEFAULTS  {0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0,0,0}
 #define  CLARKE_DEFAULTS {0,0,0,0,0} 
 #define  PARK_DEFAULTS {0,0,0,0,0,0,0}

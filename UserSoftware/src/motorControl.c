@@ -312,6 +312,12 @@ _RAM_FUNC void HAL_ADCEx_InjectedConvCpltCallback(ADC_HandleTypeDef *hadc)
     }
 
     Foc_Adc_Sample(&ADCSampPara);   // 读 ADC 注入寄存器 → 相电流 / 母线电压
+#if HyperSpeedDataProcessEn
+    /* 每个电流环周期保存一组三相电流；此处只写缓冲区，不发送 USB。 */
+    HyperSpeedData_Capture(Volt_CurrPara.PhaseU_Curr,
+                           Volt_CurrPara.PhaseV_Curr,
+                           Volt_CurrPara.PhaseW_Curr);
+#endif
     Foc_Para_Calc();
     Foc_Control();
 }

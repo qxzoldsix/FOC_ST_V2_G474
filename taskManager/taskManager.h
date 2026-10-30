@@ -13,6 +13,14 @@ typedef struct {
 
 #define Task_Num   6
 
+/* 1：电流环逐拍采样、每毫秒批量发送；0：每毫秒发送一组。 */
+#define HyperSpeedDataProcessEn     1
+/* 高速每批保存 1ms 的电流环样本；低速每次发送 1 组。 */
+#define CURRENT_BATCH_SIZE (HyperSpeedDataProcessEn ? FOC_CONTROL_FREQ_HZ / 1000U : 1U)
+#define LOW_SPEED_CHANNEL_CAPACITY 16U /* 低速上报最大数据通道数，不包含帧尾 */
+
+void HyperSpeedData_Capture(float iu, float iv, float iw);
+
 #define HFPeriod_COUNT      1    
 #define FaulPeriod_COUNT    20
 #define Balance_COUNT    20
