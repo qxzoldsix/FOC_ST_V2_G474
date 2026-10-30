@@ -9,7 +9,7 @@ static uint16_t fault_latch = FAULT_NONE;       // 当前故障位掩码
 static uint8_t  protect_enabled = 0;             // 校准完成后置1
 static uint8_t  clear_count = 0;                 // 本次上电累计清除次数
 
-static uint16_t InvProtect_DetectFaults(void)
+static uint16_t InvProtectDetectFaults(void)
 {
     uint16_t new_fault = FAULT_NONE;
     float iu = Volt_CurrPara.PhaseU_Curr;
@@ -29,36 +29,36 @@ static uint16_t InvProtect_DetectFaults(void)
     return new_fault;
 }
 
-void InvProtect_Check(void)
+void InvProtectCheck(void)
 {
     if (protect_enabled == 0U) {
         return;
     }
 
     /* 所有已检测故障均锁存，必须显式清除；锁存位只能重新上电清除。 */
-    fault_latch |= InvProtect_DetectFaults();
+    fault_latch |= InvProtectDetectFaults();
 
     if (fault_latch != FAULT_NONE) {
         motor.Fault_DTC = fault_latch;
-        if (motor.Control_Mode != MOTOR_MODE_STOP || Foc_Pwm_IsEnabled()) {
-            Motor_ControlStop();
+        if (motor.Control_Mode != MOTOR_MODE_STOP || PwmIsEnabled()) {
+            MotorControlStop();
         }
     } else {
         motor.Fault_DTC = FAULT_NONE;
     }
 }
 
-uint16_t InvProtect_GetFault(void)
+uint16_t InvProtectGetFault(void)
 {
     return fault_latch;
 }
 
-void InvProtect_Enable(void)
+void InvProtectEnable(void)
 {
     protect_enabled = 1U;
 }
 
-void InvProtect_Clear(void)
+void InvProtectClear(void)
 {
     uint16_t active_fault;
     uint16_t clearable;
@@ -67,7 +67,7 @@ void InvProtect_Clear(void)
         return;
     }
 
-    active_fault = InvProtect_DetectFaults();
+    active_fault = InvProtectDetectFaults();
     if (active_fault != FAULT_NONE) {
         fault_latch |= active_fault;
         motor.Fault_DTC = fault_latch;

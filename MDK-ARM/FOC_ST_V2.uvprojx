@@ -445,6 +445,11 @@
               <FileType>1</FileType>
               <FilePath>../Core/Src/stm32g4xx_hal_msp.c</FilePath>
             </File>
+            <File>
+              <FileName>bsp.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>../Core/Src/bsp.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
@@ -670,6 +675,11 @@
               <FileType>1</FileType>
               <FilePath>..\taskManager\taskManager.c</FilePath>
             </File>
+            <File>
+              <FileName>taskScheduler.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>../taskManager/taskScheduler.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
@@ -749,6 +759,11 @@
               <FileName>ParamId.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\UserSoftware\src\ParamId.c</FilePath>
+            </File>
+            <File>
+              <FileName>boardPeripherals.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>../UserSoftware/src/boardPeripherals.c</FilePath>
             </File>
           </Files>
         </Group>

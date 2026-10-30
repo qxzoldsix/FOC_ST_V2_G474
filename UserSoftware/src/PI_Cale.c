@@ -39,9 +39,9 @@ void PID_controller(p_PI_Control pV)
 /**
  * PI 控制器参数初始化
  * 注意: PI 默认全 0 时速度环/电流环输出均为 0
- * 调用时机: 主初始化末尾, Flux_Observer_Init() 之后
+ * 调用时机: 主初始化末尾, FluxObserverInit() 之后
  */
-void PI_Init(void)
+void PiInit(void)
 {
     /* ---- 速度环 PI ---- */
     pi_spd.Kp   = 0.01f;

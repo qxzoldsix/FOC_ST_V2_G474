@@ -45,5 +45,5 @@ void VF_Control_Run(Control_FB *pCtrl)
 	
 		Svpwm_dq.Ubeta=VF_IPARK.Beta;
 		svpwm_Cale(&Svpwm_dq);
-		PWM_Update_From_SVPWM();
+		PwmSetDuty(Svpwm_dq.SVPTa, Svpwm_dq.SVPTb, Svpwm_dq.SVPTc);
 }

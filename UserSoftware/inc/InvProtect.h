@@ -36,9 +36,9 @@
 /* 本次上电累计清除超过此次数→锁存，需重新上电 */
 #define FAULT_CLEAR_MAX         5
 
-void InvProtect_Check(void);
-void InvProtect_Clear(void);
-void InvProtect_Enable(void);
-uint16_t InvProtect_GetFault(void);
+void InvProtectCheck(void);
+void InvProtectClear(void);
+void InvProtectEnable(void);
+uint16_t InvProtectGetFault(void);
 
 #endif

@@ -9,7 +9,7 @@
 
 static volatile uint8_t pwm_bridge_enabled = 0U;
 
-static void Foc_Pwm_ClearDuty(void)
+static void PwmClearDuty(void)
 {
     __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_1, 0U);
     __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_2, 0U);
@@ -20,11 +20,11 @@ static void Foc_Pwm_ClearDuty(void)
  * @brief  初始化 PWM 时基和 ADC 采样触发，三相桥保持封波
  * @note   TIM1 CH4 只用于触发 ADC 注入组，停机时也必须继续运行保护采样
  */
-uint8_t Foc_Pwm_Init(void)
+uint8_t PwmInit(void)
 {
     pwm_bridge_enabled = 0U;
     __HAL_TIM_MOE_DISABLE(&htim1);
-    Foc_Pwm_ClearDuty();
+    PwmClearDuty();
     __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_4, FOC_ADC_TRIGGER_CCR);
 
     if (HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_4) != HAL_OK) {
@@ -40,16 +40,16 @@ uint8_t Foc_Pwm_Init(void)
  * @brief  启动 PWM 输出 (6 路互补)
  * @note   使用 TIM1 互补输出
  */
-uint8_t Foc_Pwm_Start(void)
+uint8_t PwmStart(void)
 {
-    if (Foc_Pwm_IsEnabled()) {
+    if (PwmIsEnabled()) {
         return 1U;
     }
 
     /* 输出恢复前先封总输出并清零占空比，避免带旧 CCR 开桥。 */
     pwm_bridge_enabled = 0U;
     __HAL_TIM_MOE_DISABLE(&htim1);
-    Foc_Pwm_ClearDuty();
+    PwmClearDuty();
 
     if (HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1) != HAL_OK ||
         HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_1) != HAL_OK ||
@@ -57,7 +57,7 @@ uint8_t Foc_Pwm_Start(void)
         HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_2) != HAL_OK ||
         HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_3) != HAL_OK ||
         HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_3) != HAL_OK) {
-        Foc_Pwm_Stop();
+        PwmStop();
         return 0U;
     }
 
@@ -70,12 +70,12 @@ uint8_t Foc_Pwm_Start(void)
  * @brief  停止 PWM 输出
  * @note   封锁 6 路互补 PWM
  */
-void Foc_Pwm_Stop(void)
+void PwmStop(void)
 {
     /* 先改变软件状态，再关 MOE；后续占空比写入会立即被拒绝。 */
     pwm_bridge_enabled = 0U;
     __HAL_TIM_MOE_DISABLE(&htim1);
-    Foc_Pwm_ClearDuty();
+    PwmClearDuty();
 
     (void)HAL_TIM_PWM_Stop(&htim1, TIM_CHANNEL_1);
     (void)HAL_TIMEx_PWMN_Stop(&htim1, TIM_CHANNEL_1);
@@ -88,8 +88,25 @@ void Foc_Pwm_Stop(void)
     __HAL_TIM_MOE_DISABLE(&htim1);
 }
 
-uint8_t Foc_Pwm_IsEnabled(void)
+uint8_t PwmIsEnabled(void)
 {
     return (uint8_t)((pwm_bridge_enabled != 0U) &&
                      ((htim1.Instance->BDTR & TIM_BDTR_MOE) != 0U));
+}
+
+
+/* 提交三相占空比，输出封锁时忽略更新。 */
+void PwmSetDuty(uint16_t ccr1, uint16_t ccr2, uint16_t ccr3)
+{
+    if (PwmIsEnabled() == 0U) {
+        return;
+    }
+
+    if (ccr1 > TIM1_ARR) ccr1 = TIM1_ARR;
+    if (ccr2 > TIM1_ARR) ccr2 = TIM1_ARR;
+    if (ccr3 > TIM1_ARR) ccr3 = TIM1_ARR;
+
+    __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_1, ccr1);
+    __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_2, ccr2);
+    __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_3, ccr3);
 }

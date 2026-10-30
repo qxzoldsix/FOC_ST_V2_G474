@@ -291,7 +291,7 @@ int8_t CAN_App_PDO1_TX_Send(void)
     pdo.Fault_DTC    = motor.Fault_DTC;
     /* Control_Mode 按 motorControl.h 枚举上报，包含 I/F=6、HFI=7 启动骨架。 */
     pdo.Control_Mode = motor.Control_Mode;
-    pdo.PwmEnabled   = Foc_Pwm_IsEnabled();
+    pdo.PwmEnabled   = PwmIsEnabled();
 
     return CAN_App_SendMessage(COB_PDO1_TX, (uint8_t*)&pdo, sizeof(pdo), 0);
 }

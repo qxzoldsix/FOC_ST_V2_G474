@@ -81,8 +81,7 @@ void MX_FDCAN1_Init(void)
     Error_Handler();
   }
 
-  HAL_FDCAN_Start(&hfdcan1);
-  HAL_FDCAN_ActivateNotification(&hfdcan1, FDCAN_IT_RX_FIFO0_NEW_MESSAGE, 0);
+  /* 仅配置硬件，收发与接收通知由 BoardCommunicationInit 统一启动。 */
   /* USER CODE END FDCAN1_Init 2 */
 
 }

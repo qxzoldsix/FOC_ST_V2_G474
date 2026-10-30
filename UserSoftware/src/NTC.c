@@ -6,11 +6,11 @@
  * PB12 需插头插入才可用, 通过 NTC_PB12_ENABLE 宏控制
  */
 #include "headline.h"
+#include "bsp.h"
 #include "NTC.h"
 
 NTC_Data ntc;
 
-extern uint16_t adc1_buff[2];  // [0]=PB12/CH11, [1]=PB1/CH12
 
 /* ---- 温度换算 ---- */
 float NTC_AdcToTemp_C(uint16_t adc_raw)

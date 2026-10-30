@@ -19,7 +19,7 @@ static uint8_t speed_calc_cnt = 0;
  * 磁链观测器初始化
  * 加载电机参数，复位 PLL 和磁链积分状态
  */
-void Flux_Observer_Init(void)
+void FluxObserverInit(void)
 {
     /* 全结构体清零，避免逐字段赋 0 */
     memset(&Foc_observer, 0, sizeof(Foc_observer));

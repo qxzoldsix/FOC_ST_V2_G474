@@ -4,12 +4,11 @@
  * @brief   ADC 采样: 注入组读取三相电流/母线电压 + 电流零点校准
  */
 #include "headline.h"
+#include "bsp.h"
 
 Volt_Curr Volt_CurrPara = Volt_Curr_DEFAULTS;
 
-extern uint16_t adc1_buff[2];
-extern uint16_t adc2_buff[4];
-_RAM_FUNC void Foc_Adc_Sample(p_ADCSample pADC)
+_RAM_FUNC void FocAdcSample(p_ADCSample pADC)
 {
 	pADC->PhaseU_Raw = ADC1->JDR3;
 	pADC->PhaseV_Raw = ADC1->JDR2;
@@ -30,7 +29,7 @@ _RAM_FUNC void Foc_Adc_Sample(p_ADCSample pADC)
 //    pADC->foc.i_b = ((float) pADC->adc.ib - pADC->adc.ib_off) * pADC->board.i_ratio;
 //    pADC->foc.i_c = ((float) pADC->adc.ic - pADC->adc.ic_off) * pADC->board.i_ratio;
 }
-_RAM_FUNC void Foc_Para_Calc(void){
+_RAM_FUNC void FocParaCalc(void){
     Volt_CurrPara.BUS_Voltage = ADCSampPara.BUS_Volt_Raw * VOLTAGE_RATIO;
 
     /* 母线电流 = 占空比加权平均（准确的直流侧平均电流）*/
@@ -46,7 +45,7 @@ _RAM_FUNC void Foc_Para_Calc(void){
         Volt_CurrPara.Svpwm_Km_BackwS = 0.0f;
     }
 }
-void ZeroCurrOffset_Calibration(void)
+void ZeroCurrOffsetCalibration(void)
 {
     uint32_t sumU = 0, sumV = 0, sumW = 0, sumBus = 0;
 

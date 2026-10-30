@@ -68,7 +68,7 @@ extern FOC_OBSERVER_DEF Foc_observer;
 extern float Flux_in_wb[2];    // 总磁链
 extern float FluxR_in_wb[2];   // 转子磁链
 
-void Flux_Observer_Init(void);
+void FluxObserverInit(void);
 void Observer_Run(void);
 void Angel_Get(void);
 

@@ -18,11 +18,9 @@ typedef enum {
     MOTOR_MODE_HFI_STARTUP   = 7U  /* HFI 启动：高频注入获取初始位置，随后切无感闭环 */
 } MotorControlMode;
 
-void PMSM_init(void);
-void Foc_Control(void);
-uint8_t Motor_ControlStart(uint8_t mode, float target_speed_rpm);
-void Motor_ControlStop(void);
-void PWM_Update_From_SVPWM(void);
-void PWM_SetDuty(uint16_t ccr1, uint16_t ccr2, uint16_t ccr3);
+void MotorControlInit(void);
+void FocControl(void);
+uint8_t MotorControlStart(uint8_t mode, float target_speed_rpm);
+void MotorControlStop(void);
 
 #endif

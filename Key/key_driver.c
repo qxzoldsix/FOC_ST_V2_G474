@@ -248,7 +248,3 @@ void key_process(void)
 		}
 	}
 }
-//void KeyTask_Solve(void){
-//	
-//	for(uint8_t i=
-//}

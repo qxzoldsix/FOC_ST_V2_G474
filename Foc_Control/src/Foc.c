@@ -148,5 +148,5 @@ void FOC_Svpwm_dq(void)
     Svpwm_dq.Ualpha = IPARK_PVdq.Alpha;
     Svpwm_dq.Ubeta  = IPARK_PVdq.Beta;
     svpwm_Cale((p_SVPWM)&Svpwm_dq);                     // SVPWM 计算占空比
-    PWM_Update_From_SVPWM();                             // 更新 TIM1 CCR
+    PwmSetDuty(Svpwm_dq.SVPTa, Svpwm_dq.SVPTb, Svpwm_dq.SVPTc);                             // 更新 TIM1 CCR
 }

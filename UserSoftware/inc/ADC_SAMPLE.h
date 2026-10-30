@@ -58,9 +58,9 @@ extern  Volt_Curr   Volt_CurrPara;
 
 
 //extern s16 Calibrattion_Val;
-_RAM_FUNC void Foc_Para_Calc(void);
-_RAM_FUNC void Foc_Adc_Sample(p_ADCSample pADC);
-void ZeroCurrOffset_Calibration(void);
+_RAM_FUNC void FocParaCalc(void);
+_RAM_FUNC void FocAdcSample(p_ADCSample pADC);
+void ZeroCurrOffsetCalibration(void);
 //void ADC_Function_Init(void);
 //void ADC_DMA_Init(u32 ppadr,u32 memadr,u16 bufsize);
 //u16 Get_ConversionVal(s16 val);

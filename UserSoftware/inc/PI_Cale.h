@@ -39,7 +39,7 @@ v1：限幅前的 PI 输出
 Out：限幅后的输出
 */
 #define PI_Control_DEFAULTS {0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0}
-void PI_Init(void);
+void PiInit(void);
 extern  PI_controller   pi_spd ;
 extern  PI_controller   pi_id ;
 extern  PI_controller   pi_iq ;
