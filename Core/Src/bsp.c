@@ -13,8 +13,8 @@
 #include "usart.h"
 
 /* 常规组 DMA 循环缓冲，温度等慢任务直接读取。 */
-uint16_t adc1_buff[2];
-uint16_t adc2_buff[4];
+volatile uint16_t adc1_buff[2];
+volatile uint16_t adc2_buff[4];
 
 void SystemClock_Config(void)
 {

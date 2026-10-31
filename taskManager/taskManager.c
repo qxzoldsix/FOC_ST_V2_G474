@@ -218,6 +218,7 @@ void DisplayTaskRun(void)
             case MOTOR_MODE_SENSOR:      mode = "[SENSOR]"; break;
             case MOTOR_MODE_SENSORLESS:  mode = "[SENSORLESS]"; break;
             case MOTOR_MODE_VF:          mode = "[VF]"; break;
+            case MOTOR_MODE_IF:          mode = "[IF]"; break;
             case MOTOR_MODE_PREPOS:      mode = "[PREPOS]"; break;
             case MOTOR_MODE_PARAM_ID:    mode = "[PARAM ID]"; color = LGRAY; break;
             case MOTOR_MODE_IF_STARTUP:  mode = "[I/F START]"; color = LGRAY; break;
@@ -229,6 +230,14 @@ void DisplayTaskRun(void)
         memcpy(field, mode, length);
         field[14] = '\0';
         LCD_ShowString(81, 3, (const uint8_t *)field, color, BLACK, 12, 0);
+
+        /* I/F复用开环频率栏，右侧改为电流给定；只在模式变化时重画标签。 */
+        LCD_ShowString(3, 41, (const uint8_t *)(current_mode == MOTOR_MODE_IF ? "IF Hz" : "VF Hz"),
+                       GRAY, BLACK, 12, 0);
+        LCD_ShowString(123, 41, (const uint8_t *)(current_mode == MOTOR_MODE_IF ? "IF I" : "VF V"),
+                       GRAY, BLACK, 12, 0);
+        LCD_ShowString(213, 41, (const uint8_t *)(current_mode == MOTOR_MODE_IF ? "A " : "pu"),
+                       GRAY, BLACK, 12, 0);
 
         LCD_Fill(3, 77, 237, 89, BLACK);
         LCD_ShowString(3, 77, (const uint8_t *)(estimated ? "Est" : "Ang"),
@@ -242,9 +251,10 @@ void DisplayTaskRun(void)
 
     /* 左右两列各宽 120 像素，统一排列标签、右对齐的 9 字符数值及单位。 */
     DebugLcdValue(33, 23, Volt_CurrPara.BUS_Voltage, 9U, 3U, LGRAY);
-    /* VF 参数明确标注为 VF；这些数值不是模式 2 的速度环或电流环目标。 */
+    /* 开环给定：I/F显示电流斜坡输出，VF显示电压幅值，不冒充模式2的给定。 */
     DebugLcdValue(33, 41, motor.TargetHz, 9U, 1U, LGRAY);
-    DebugLcdValue(153, 41, motor.V_amp, 9U, 3U, LGRAY);
+    DebugLcdValue(153, 41, current_mode == MOTOR_MODE_IF ? I_d_GXieLv.XieLv_Y : motor.V_amp,
+                   9U, 3U, LGRAY);
     DebugLcdValue(33, 59, motor.CurrentHz, 9U, 1U, LGRAY);
     DebugLcdValue(153, 59, Foc_observer.PLL_Err, 9U, 3U, LGRAY);
     DebugLcdValue(33, 77, estimated ? Foc_observer.speed_hz : motor.OpenTheta,

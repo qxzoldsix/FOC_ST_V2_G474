@@ -4,6 +4,7 @@
  */
 #include "headline.h"
 #include "taskScheduler.h"
+#include "debugSerial.h"
 
 typedef struct {
     uint16_t period;
@@ -17,7 +18,8 @@ static TaskTime taskList[] = {
     {BOARD_MONITOR_TASK_PERIOD_MS,8U, BoardMonitorTaskRun},
     {KEY_TASK_PERIOD_MS,         80U, KeyTaskRun},
     {DISPLAY_TASK_PERIOD_MS,    600U, DisplayTaskRun},
-    {CAN_APP_TASK_PERIOD_MS,      5U, CanTaskRun}
+    {CAN_APP_TASK_PERIOD_MS,      5U, CanTaskRun},
+    {DEBUG_STATUS_TASK_PERIOD_MS, 0U, DebugStatusTaskRun}
 };
 
 void TaskSchedulerInit(void)

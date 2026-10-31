@@ -289,7 +289,7 @@ int8_t CAN_App_PDO1_TX_Send(void)
     PDO1_TX_Data pdo;
     pdo.SpeedRPM     = motor.SpeedRPM;
     pdo.Fault_DTC    = motor.Fault_DTC;
-    /* Control_Mode 按 motorControl.h 枚举上报，包含 I/F=6、HFI=7 启动骨架。 */
+    /* Control_Mode按motorControl.h枚举上报：4为持续I/F开环，7/8为启动骨架。 */
     pdo.Control_Mode = motor.Control_Mode;
     pdo.PwmEnabled   = PwmIsEnabled();
 

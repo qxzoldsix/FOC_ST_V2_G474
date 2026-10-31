@@ -13,6 +13,7 @@
 #define KEY_TASK_PERIOD_MS           100U
 #define DISPLAY_TASK_PERIOD_MS      1000U
 #define CAN_APP_TASK_PERIOD_MS        10U
+#define DEBUG_STATUS_TASK_PERIOD_MS  500U /* USART3 可读状态日志 */
 
 void HyperSpeedDataCapture(float iu, float iv, float iw);
 void TelemetryTaskRun(void);

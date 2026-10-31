@@ -710,6 +710,11 @@
               <FileType>1</FileType>
               <FilePath>..\Foc_Control\src\VF.c</FilePath>
             </File>
+            <File>
+              <FileName>IF.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Foc_Control\src\IF.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
@@ -761,9 +766,19 @@
               <FilePath>..\UserSoftware\src\ParamId.c</FilePath>
             </File>
             <File>
+              <FileName>paramIdFlux.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>../UserSoftware/src/paramIdFlux.c</FilePath>
+            </File>
+            <File>
               <FileName>boardPeripherals.c</FileName>
               <FileType>1</FileType>
               <FilePath>../UserSoftware/src/boardPeripherals.c</FilePath>
+            </File>
+            <File>
+              <FileName>debugSerial.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>../UserSoftware/src/debugSerial.c</FilePath>
             </File>
           </Files>
         </Group>

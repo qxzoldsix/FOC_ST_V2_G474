@@ -5,6 +5,7 @@
  */
 #include "headline.h"
 #include "bsp.h"
+#include "IF.h"
 
 Control_FB motor = Control_FB_DEFAULTS;
 ADCSample ADCSampPara = ADCSamp_DEFAULTS;
@@ -26,25 +27,27 @@ static MotorStateMachine motor_sm = {
 static uint8_t MotorModeIsSupported(MotorControlMode mode)
 {
     /*
-     * 这里只声明状态机认识的模式。I/F/HFI 当前先接入状态机骨架，
-     * 具体启动算法尚未实现；运行函数会安全停机，禁止误把空壳当成闭环。
+     * 这里只声明状态机认识的模式。IF_STARTUP/HFI_STARTUP仍是启动骨架；
+     * MOTOR_MODE_IF为独立、已实现的持续I/F开环，不等同于自动切闭环启动。
      */
     return (uint8_t)(mode == MOTOR_MODE_SENSORLESS ||
                      mode == MOTOR_MODE_VF ||
                      mode == MOTOR_MODE_PREPOS ||
                      mode == MOTOR_MODE_PARAM_ID ||
                      mode == MOTOR_MODE_IF_STARTUP ||
+                     mode == MOTOR_MODE_IF ||
                      mode == MOTOR_MODE_HFI_STARTUP);
 }
 
 static uint8_t MotorModeCanStartExternally(MotorControlMode mode)
 {
-    /* SENSOR 无位置源，仍禁止外部直接启动；I/F/HFI 允许命令进入骨架。 */
+    /* SENSOR无位置源，禁止外部直接启动；两种STARTUP仍只允许进入骨架。 */
     return (uint8_t)(mode == MOTOR_MODE_SENSORLESS ||
                      mode == MOTOR_MODE_VF ||
                      mode == MOTOR_MODE_PREPOS ||
                      mode == MOTOR_MODE_PARAM_ID ||
                      mode == MOTOR_MODE_IF_STARTUP ||
+                     mode == MOTOR_MODE_IF ||
                      mode == MOTOR_MODE_HFI_STARTUP);
 }
 
@@ -94,6 +97,11 @@ static void MotorResetStoppedRuntime(void)
     VF_HzRamp.XieLv_Y = 0.0f;
     VF_HzRamp.Timer_Count = 0U;
 
+    IF_HzRamp.XieLv_X = 0.0f;
+    IF_HzRamp.XieLv_Y = 0.0f;
+    IF_HzRamp.Timer_Count = 0U;
+    IF_HzRamp.Grad_Timer = 0U;
+
     motor.SpeedRPM = 0.0f;
     motor.CurrentHz = 0.0f;
     motor.OpenTheta = 0.0f;
@@ -130,7 +138,7 @@ static void MotorPrepareVfFamily(MotorControlMode previous_mode)
 
 static void MotorPreparePreposition(void)
 {
-    float pll_step = 2.0f * PI * motor.CurrentHz * Foc_observer.Ctrl_ts;
+    float pll_step = TWO_PI * motor.CurrentHz * Foc_observer.Ctrl_ts;
 
     Foc_observer.Theta = motor.OpenTheta;
     Foc_observer.PLL_Ui = pll_step;
@@ -186,6 +194,9 @@ static void MotorEnterMode(MotorControlMode next_mode)
     } else if (next_mode == MOTOR_MODE_PARAM_ID) {
         /* PWM已以零占空比安全开启，辨识状态机从定位阶段开始接管输出。 */
         ParamIdStart();
+    } else if (next_mode == MOTOR_MODE_IF) {
+        MotorResetClosedLoopRuntime();
+        IfControlStart();
     }
 
     motor_sm.active_mode = next_mode;
@@ -238,7 +249,7 @@ static void MotorRunHfiStartup(void)
 
 static void MotorRunPreposition(void)
 {
-    /* MODE=4：当前为预定位/VF 试验。 */
+    /* MODE=5：预定位入口，具体算法尚未实现。 */
 
 }
 
@@ -272,6 +283,11 @@ static void MotorRunActiveMode(void)
         case MOTOR_MODE_IF_STARTUP:
             /* I/F 启动：当前仅保留入口，算法未实现，运行函数会安全停机。 */
             MotorRunIfStartup();
+            break;
+
+        case MOTOR_MODE_IF:
+            /* I/F持续开环：电流闭环，角度由频率积分，不调用速度PI或观测器。 */
+            IfControlRun();
             break;
 
         case MOTOR_MODE_HFI_STARTUP:
@@ -331,6 +347,17 @@ _RAM_FUNC void HAL_ADCEx_InjectedConvCpltCallback(ADC_HandleTypeDef *hadc)
     FocControl();
 }
 
+/* 运行时检查 PWM：辨识滑行允许主动封波，其余运行状态丢失输出就退出运行。 */
+static void MotorCheckPwmState(void)
+{
+    if (motor_sm.active_mode != MOTOR_MODE_STOP && PwmIsEnabled() == 0U) {
+        /* 只有辨识滑行阶段主动封波后仍需采集；其余运行模式丢桥立即停机。 */
+        if (motor_sm.active_mode != MOTOR_MODE_PARAM_ID || pid.step != ID_STEP_FLUX_COAST) {
+            MotorControlStop();
+        }
+    }
+}
+
 /* 接受模式请求并确认功率级状态；失败统一回到 STOP。 */
 static void MotorUpdateMode(void)
 {
@@ -338,9 +365,7 @@ static void MotorUpdateMode(void)
     if (requestedMode != motor_sm.active_mode) {
         MotorEnterMode(requestedMode);
     }
-    if (motor_sm.active_mode != MOTOR_MODE_STOP && PwmIsEnabled() == 0U) {
-        MotorControlStop();
-    }
+    MotorCheckPwmState();
 }
 
 /* 控制主流程只保留保护、状态更新和模式运行。 */
@@ -365,18 +390,25 @@ uint8_t MotorControlStart(uint8_t mode, float target_speed_rpm)
 
     /* SENSOR 尚未接入角度源，禁止通过外部命令使能功率级。 */
     if (!MotorModeCanStartExternally(requested_mode) ||
-        !isfinite(target_speed_rpm) || target_speed_rpm < 0.0f ||
+        !isfinite(target_speed_rpm) ||
+        (target_speed_rpm < 0.0f && requested_mode != MOTOR_MODE_IF) ||
         InvProtectGetFault() != FAULT_NONE) {
         return 0U;
     }
 
-    /* 参数辨识必须静止执行，启动帧的目标转速必须为 0。 */
+    /* 参数辨识从静止开始，后续会自动拖转；启动帧的目标转速必须为0。 */
     if (requested_mode == MOTOR_MODE_PARAM_ID && target_speed_rpm != 0.0f) {
         return 0U;
     }
 
     target_hz = target_speed_rpm * (float)MOTOR_POLE_PAIRS / 60.0f;
-    if (!isfinite(target_hz) || target_hz > VF_FREQ_MAX) {
+    if (!isfinite(target_hz) ||
+        fabsf(target_hz) > (requested_mode == MOTOR_MODE_IF ? IF_FREQ_MAX_HZ : VF_FREQ_MAX)) {
+        return 0U;
+    }
+
+    if (requested_mode == MOTOR_MODE_IF &&
+        (!isfinite(IfCurrentTargetA) || IfCurrentTargetA <= 0.0f || IfCurrentTargetA > IF_CURRENT_MAX_A)) {
         return 0U;
     }
 

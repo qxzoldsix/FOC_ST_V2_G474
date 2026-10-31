@@ -24,13 +24,13 @@ typedef struct
 	float V_q;                 // q 轴电压，float pu，与 VF/SVPWM 同基准
 	float V_amp;               // VF 电压幅值，float pu（不是 Q 格式原码）
 	float  SpeedRPM;			// 机械转速 (RPM)
-	float CurrentHz;			// 当前电频率 (Hz)
-	float OpenTheta;			// VF 开环角度 (rad)
-	float TargetHz;				// 目标电频率 (Hz)
+	float CurrentHz;			// VF/I-F 当前电频率命令 (Hz)，不是实测频率
+	float OpenTheta;			// VF/I-F 开环角度 (rad)
+	float TargetHz;				// VF/I-F 目标电频率 (Hz)
 	float TargetVolt;			// VF 目标电压 float pu；0.5 pu = 3.464 V 相电压峰值
 	uint16_t   Fault_DTC;      // 故障码（位掩码）
 	int16_t IQAngle;            // 电角度 (0~4095)
-	uint8_t Control_Mode;		// 0停机 1有感 2无感直闭环 3VF 4预定位 5辨识 6I/F启动 7HFI启动
+	uint8_t Control_Mode;		// 0停机 1有感 2无感直闭环 3VF 4I/F开环 5预定位 6辨识 7I/F启动 8HFI启动
 }Control_FB;
 
 typedef struct {

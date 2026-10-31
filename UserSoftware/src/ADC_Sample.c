@@ -14,9 +14,7 @@ _RAM_FUNC void FocAdcSample(p_ADCSample pADC)
 	pADC->PhaseV_Raw = ADC1->JDR2;
 	pADC->PhaseW_Raw = ADC1->JDR1;
 
-//	pADC->adc.va = adc2_buff[1];
-//	pADC->adc.vb = adc2_buff[2];
-//	pADC->adc.vc = adc2_buff[3];
+	/* ADC2 常规组 [1..3] 的 VA/VB/VC 由磁链模块在封波滑行时读取。 */
 	pADC->BUS_Volt_Raw  = ADC2->JDR1;
 	pADC->BUS_Curr_Raw  = ADC1->JDR4;   // PA3/ADC1_IN4 母线电流
 

@@ -11,8 +11,8 @@
 
 #define V_REF        3.3f    // ADC 参考电压 3.3V
 #define ADC_MAX      4096.0f // 12位 ADC 最大值 2^12 = 4096
-#define R_UP         15500.0f// 上分压电阻 15.5k
-#define R_DOWN       1000.0f // 下分压电阻 1k
+#define R_UP         30000.0f // 原理图：上臂 15k + 15k，三相电压与母线相同
+#define R_DOWN       2000.0f  // 下臂 2k，电压分压倍数为 16
 
 
 #define SenseRes     0.005f   // 采样电阻 5mΩ

@@ -9,6 +9,7 @@
 #include "can_app.h"
 #include "fdcan.h"
 #include "usb_device.h"
+#include "debugSerial.h"
 
 void BoardPeripheralInit(void)
 {
@@ -25,4 +26,5 @@ void BoardCommunicationInit(void)
         Error_Handler();
     }
     MX_USB_Device_Init();
+    (void)DebugSerialWrite("USART3 debug ready: 115200 8N1\r\n");
 }
