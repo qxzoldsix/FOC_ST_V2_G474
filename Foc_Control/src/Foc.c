@@ -23,7 +23,7 @@ Ang_SinCos   Park_SinCos = Ang_SinCos_DEFAULTS;
 void  CLARKE_Cale(p_CLARKE  pV)
 {
     pV->Alpha = pV->Us;
-    pV->Beta = CURRENT_BETA_SIGN * (pV->Us + pV->Vs*2)*0.577350269f;  // 1/√3 ≈ 0.577350269
+    pV->Beta = CURRENT_BETA_SIGN * (pV->Us + pV->Vs*2)*INV_SQRT3;  // 1/√3
 }
 
 /**
@@ -60,7 +60,7 @@ void UVW_Axis_DQ(void){
 #endif
     CLARKE_Cale((p_CLARKE)&CLARKE_PCurr);
 #if PARK_ANGLE_REVERSE
-    Park_SinCos.table_Angle = (uint16_t)((4096 - motor.IQAngle) & 0x0FFF);
+    Park_SinCos.table_Angle = (uint16_t)((ANGLE_FULL_SCALE - motor.IQAngle) & ANGLE_MASK);
 #else
     Park_SinCos.table_Angle = motor.IQAngle;
 #endif

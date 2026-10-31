@@ -76,10 +76,10 @@ void IfControlRun(void)
     }
     motor.CurrentHz = IF_HzRamp.XieLv_Y;
 
-    motor.OpenTheta += 2.0f * PI * motor.CurrentHz * FOC_CONTROL_TS_S;
-    if (motor.OpenTheta >= 2.0f * PI) motor.OpenTheta -= 2.0f * PI;
-    if (motor.OpenTheta < 0.0f) motor.OpenTheta += 2.0f * PI;
-    motor.IQAngle = (int16_t)(motor.OpenTheta * (4096.0f / (2.0f * PI)));
+    motor.OpenTheta += TWO_PI * motor.CurrentHz * FOC_CONTROL_TS_S;
+    if (motor.OpenTheta >= TWO_PI) motor.OpenTheta -= TWO_PI;
+    if (motor.OpenTheta < 0.0f) motor.OpenTheta += TWO_PI;
+    motor.IQAngle = (int16_t)(motor.OpenTheta * RAD_TO_ANGLE);
     UVW_Axis_DQ();
     Idq_FOC();
     FOC_Svpwm_dq();

@@ -30,10 +30,10 @@ void VF_Control_Run(Control_FB *pCtrl)
             pCtrl->V_amp = target_pu;
         }
     }
-		pCtrl->OpenTheta += 2.0f * PI * pCtrl->CurrentHz * VF_TS;
-		while (pCtrl->OpenTheta >= 2.0f * PI) pCtrl->OpenTheta -= 2.0f * PI;
-		while (pCtrl->OpenTheta < 0.0f)        pCtrl->OpenTheta += 2.0f * PI;
-		ParkSinCos.table_Angle = (uint16_t)(pCtrl->OpenTheta * (4096.0f / (2.0f * PI)));
+		pCtrl->OpenTheta += TWO_PI * pCtrl->CurrentHz * VF_TS;
+		while (pCtrl->OpenTheta >= TWO_PI) pCtrl->OpenTheta -= TWO_PI;
+		while (pCtrl->OpenTheta < 0.0f)        pCtrl->OpenTheta += TWO_PI;
+		ParkSinCos.table_Angle = (uint16_t)(pCtrl->OpenTheta * RAD_TO_ANGLE);
     SinCos_Table(&ParkSinCos);
 		VF_IPARK.Ds    = 0.0f;
     VF_IPARK.Qs    = pCtrl->V_amp;// F:motor.TargetHz

@@ -32,8 +32,8 @@ void PWM_ReconstructVoltage(float *u_alpha_v, float *u_beta_v)
     float duty_w = (float)Svpwm_dq.SVPTc / (float)(TIM1_ARR + 1U);
 
     if (!isfinite(vbus) || vbus <= 1.0f) vbus = 0.0f;
-    *u_alpha_v = 0.666666667f * vbus * (duty_u - 0.5f * duty_v - 0.5f * duty_w);
-    *u_beta_v = 0.577350269f * vbus * (duty_v - duty_w);
+    *u_alpha_v = TWO_OVER_3 * vbus * (duty_u - 0.5f * duty_v - 0.5f * duty_w);
+    *u_beta_v = INV_SQRT3 * vbus * (duty_v - duty_w);
 }
 
 void svpwm_Cale(p_SVPWM pV){
@@ -52,7 +52,7 @@ void svpwm_Cale(p_SVPWM pV){
         }
     }
     pV->tmp1= pV->Ubeta;   //Vref1
-    pV->tmp2= pV->Ubeta*0.5f + pV->Ualpha*0.8660254f ;//vref2
+    pV->tmp2= pV->Ubeta*0.5f + pV->Ualpha*SQRT3_OVER_2 ;//vref2
     pV->tmp3= pV->tmp2 - pV->tmp1;   // Vref3 = (√3/2)Ualpha - 0.5*Ubeta
     pV->VecSector=3;                  // 基准值
     pV->VecSector=(pV->tmp2>0)?(pV->VecSector-1):(pV->VecSector);

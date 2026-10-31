@@ -41,7 +41,7 @@ void FluxObserverInit(void)
 #if OBSERVER_TYPE == OBS_HYBRID_ACTIVE_FLUX
     /* 混合观测器: 按二阶系统带宽设计 (ζ=1, 临界阻尼) */
     {
-        float w_pll = 2.0f * PI * HYBRID_PLL_BW_HZ;
+        float w_pll = TWO_PI * HYBRID_PLL_BW_HZ;
         Foc_observer.PLL_BW_Hz = HYBRID_PLL_BW_HZ;
         Foc_observer.PLL_kp = 2.0f * w_pll;
         Foc_observer.PLL_ki = w_pll * w_pll * Foc_observer.Ctrl_ts;
@@ -58,7 +58,7 @@ void FluxObserverInit(void)
 
     /* ---- Hybrid Active Flux 反馈补偿 PI ---- */
     {
-        float w0 = 2.0f * PI * HYBRID_COMP_BW_HZ;
+        float w0 = TWO_PI * HYBRID_COMP_BW_HZ;
         Foc_observer.Comp_Kp = 2.0f * w0;
         Foc_observer.Comp_Ki = w0 * w0 * Foc_observer.Ctrl_ts;
     }
@@ -106,8 +106,8 @@ static void Deadtime_Comp_ab(float *Ualpha_out, float *Ubeta_out)
     v_dead = V_DEADTIME;
 
     /* Clarke 变换：相电压畸变 → αβ */
-    v_alpha_dist = 0.6666667f * v_dead * (sign_u - 0.5f * sign_v - 0.5f * sign_w);
-    v_beta_dist  = 0.5773503f * v_dead * (sign_v - sign_w);  // 1/√3
+    v_alpha_dist = TWO_OVER_3 * v_dead * (sign_u - 0.5f * sign_v - 0.5f * sign_w);
+    v_beta_dist  = INV_SQRT3 * v_dead * (sign_v - sign_w);  // 1/√3
 
     /* 标幺只存在于控制命令；观测器积分必须使用 V。由最终 CCR 重构，
      * 同时包含调制比例、矢量限幅和整数截断，不再重复乘 Vbus。 */
@@ -164,7 +164,7 @@ void Observer_Run(void)
 
     // 抗饱和: 限制积分项不超过最大电角速度对应的每周期步长
     // 500Hz 电频率 → ωe_max = 2π×500 = 3141 rad/s → 每周期步长 = 3141×50µs = 0.157 rad
-    pll_ui_lim = 2.0f * PI * 500.0f * Foc_observer.Ctrl_ts;
+    pll_ui_lim = TWO_PI * 500.0f * Foc_observer.Ctrl_ts;
     Foc_observer.PLL_Interg = Limit_Sat(Foc_observer.PLL_Interg, pll_ui_lim, -pll_ui_lim);
 
     Foc_observer.PLL_Ui = Foc_observer.PLL_Err * Foc_observer.PLL_kp + Foc_observer.PLL_Interg;
@@ -174,8 +174,8 @@ void Observer_Run(void)
     Foc_observer.Theta += Foc_observer.PLL_Ui;
 
     // 角度归一化 [0, 2π)
-    while (Foc_observer.Theta >= 2.0f * PI) Foc_observer.Theta -= 2.0f * PI;
-    while (Foc_observer.Theta < 0.0f)       Foc_observer.Theta += 2.0f * PI;
+    while (Foc_observer.Theta >= TWO_PI) Foc_observer.Theta -= TWO_PI;
+    while (Foc_observer.Theta < 0.0f)       Foc_observer.Theta += TWO_PI;
 
     /* ---- Step 5: 更新总磁链（用当前周期的 Err 做补偿，无延迟）---- */
     VoltRs[0] = Foc_observer.Rs * CLARKE_PCurr.Alpha;
@@ -194,7 +194,7 @@ void Observer_Run(void)
 
     if (speed_calc_cnt >= 8)
     {
-        speed_now = speed_acc / (8.0f * Foc_observer.Ctrl_ts * 2.0f * PI);
+        speed_now = speed_acc / (8.0f * Foc_observer.Ctrl_ts * TWO_PI);
         Foc_observer.speed_hz = Foc_observer.speed_hz * 0.95f + speed_now * 0.05f;
         speed_acc = 0.0f;
         speed_calc_cnt = 0;
@@ -359,7 +359,7 @@ void Observer_Run_HybirdFlux(void)
     Foc_observer.PLL_Interg += Foc_observer.PLL_Err * Foc_observer.PLL_ki;
 
     /* 抗饱和: 限幅 ±(ωe_max × Ts) */
-    pll_ui_lim = 2.0f * PI * 500.0f * Foc_observer.Ctrl_ts;
+    pll_ui_lim = TWO_PI * 500.0f * Foc_observer.Ctrl_ts;
     Foc_observer.PLL_Interg = Limit_Sat(Foc_observer.PLL_Interg, pll_ui_lim, -pll_ui_lim);
 
     Foc_observer.PLL_Ui = Foc_observer.PLL_Err * Foc_observer.PLL_kp
@@ -370,8 +370,8 @@ void Observer_Run_HybirdFlux(void)
     Foc_observer.Theta += Foc_observer.PLL_Ui;
 
     /* 角度归一化 [0, 2π) */
-    while (Foc_observer.Theta >= 2.0f * PI) Foc_observer.Theta -= 2.0f * PI;
-    while (Foc_observer.Theta < 0.0f)       Foc_observer.Theta += 2.0f * PI;
+    while (Foc_observer.Theta >= TWO_PI) Foc_observer.Theta -= TWO_PI;
+    while (Foc_observer.Theta < 0.0f)       Foc_observer.Theta += TWO_PI;
 
     /* ---- Step 8: 电频率计算与低通滤波 ---- */
     speed_acc += Foc_observer.PLL_Ui;
@@ -379,7 +379,7 @@ void Observer_Run_HybirdFlux(void)
 
     if (speed_calc_cnt >= 8)
     {
-        speed_now = speed_acc / (8.0f * Foc_observer.Ctrl_ts * 2.0f * PI);
+        speed_now = speed_acc / (8.0f * Foc_observer.Ctrl_ts * TWO_PI);
         Foc_observer.speed_hz = Foc_observer.speed_hz * 0.95f + speed_now * 0.05f;
         speed_acc = 0.0f;
         speed_calc_cnt = 0;
@@ -467,16 +467,16 @@ void Angel_Get(void)
 #endif
 
     // rad → 定点角度 (4096 = 2π)
-    motor.IQAngle = (int16_t)(651.8986f * Foc_observer.Theta);
+    motor.IQAngle = (int16_t)(RAD_TO_ANGLE * Foc_observer.Theta);
 
     // 角度回绕到 [0, 4095]
-    if (motor.IQAngle > 4095)
+    if (motor.IQAngle >= (int16_t)ANGLE_FULL_SCALE)
     {
-        motor.IQAngle -= 4096;
+        motor.IQAngle -= (int16_t)ANGLE_FULL_SCALE;
     }
     else if (motor.IQAngle < 0)
     {
-        motor.IQAngle += 4096;
+        motor.IQAngle += (int16_t)ANGLE_FULL_SCALE;
     }
 
     // 速度反馈: 电频率 Hz → 机械转速 RPM
