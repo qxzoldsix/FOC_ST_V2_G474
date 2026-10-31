@@ -59,7 +59,7 @@ FOC_ST_V2_0611/
 
 ## 3. 控制模式
 
-`motor.Control_Mode` 切换（按键 KEY2 循环切换）：
+通过调试器的 `motor.Control_Mode` 或 CAN 启动命令切换。以下编号更新于2026-10-31；按键启停/模式切换目前仍为预留入口。
 
 | Mode | 名称 | 说明 | 状态 |
 |------|------|------|------|
@@ -67,20 +67,19 @@ FOC_ST_V2_0611/
 | 1 | **SENSOR** | 有感 FOC（霍尔/编码器） | ❌ 未实现 |
 | 2 | **SENSORLESS** | 无感 FOC 闭环（观测器+PLL+速度/电流双环） | ✅ |
 | 3 | **VF** | V/F 开环压频控制 | ✅ |
-| 4 | **PREPOS** | VF 驱动 + 观测器后台预热（切闭环过渡模式） | ✅ |
+| 4 | **IF** | 电流闭环、频率/角度开环，持续运行，不自动切入模式2 | ✅ |
+| 5 | **PREPOS** | 预定位入口 | ❌ 运行算法未实现 |
+| 6 | **PARAM_ID** | 静止测R/L，随后空载拖转并封波测磁链/反电动势 | ✅ |
+| 7 | **IF_STARTUP** | I/F启动后切无感闭环 | ❌ 仅骨架，进入后停机 |
+| 8 | **HFI_STARTUP** | 高频注入启动后切闭环 | ❌ 仅骨架，进入后停机 |
 
-### 模式切换流程
+### I/F开环调试
 
-```
-STOP(0) → VF(3) → PREPOS(4) → SENSORLESS(2) → STOP(0) → ...
-```
+I/F没有默认电流或频率目标。先由用户手动设置 `IfCurrentTargetA`（A）和 `motor.TargetHz`（电Hz，负值反转），再设置 `motor.Control_Mode=MOTOR_MODE_IF`（4）。程序不自动填入1A或30Hz；入模保留手动目标。上电电流目标为0，未提供有效正电流时不会运行，`IfError`报告给定错误。零频率保持固定角度和手动给定的电流，不会被替换成非零频率；CAN以0RPM启动I/F同样不会自动升频。
 
-**推荐启动流程**:
-1. KEY1 启动 → 进入 Mode 3 (VF)
-2. KEY3/KEY4 调节 targetHz
-3. KEY2 → Mode 4 (PREPOS) 预热观测器
-4. 等 LCD 显示 Psi ≈ 0.0075
-5. KEY2 → Mode 2 (闭环)
+电流与频率均复用 `Grad_XieLv()` 做斜坡，斜坡速率为5 A/s和50 Hz/s，速率不是目标值。每拍步长分别看 `I_d_GXieLv.XieLv_Grad` 和 `IF_HzRamp.XieLv_Grad`。`motor.CurrentHz` 为斜坡命令，不是实测转速；停止请设 `motor.Control_Mode=0`。
+
+模式2保持直接无感闭环。历史调试文档中的“Mode4预定位”采用旧编号，不能直接用于当前固件；当前参数辨识入口已改为模式6。
 
 ---
 

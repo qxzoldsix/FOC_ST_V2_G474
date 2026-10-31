@@ -1,13 +1,13 @@
 /**
  * @file    ParamId.h
- * @brief   静止电机 Rs/Ld/Lq 辨识配置、状态和候选结果
+ * @brief   Rs/Ld/Lq 静止辨识及空载拖转后的磁链/反电动势辨识
  */
 #ifndef __PARAMID_H_
 #define __PARAMID_H_
 #include "headline.h"
 
 /* 时间基准：以下毫秒配置转换成回调拍数，前提是完整 ADC 组频率正确。
- * 20kHz 时 1 拍=50us；模式5需连续运行，调试暂停可能触发周期检查。
+ * 20kHz 时 1 拍=50us；模式6需连续运行，调试暂停可能触发周期检查。
  */
 #define ID_MS_TICKS(ms)              ((FOC_CONTROL_FREQ_HZ * (ms)) / 1000U)
 #define ID_ALIGN_HOLD_TICKS          ID_MS_TICKS(150U)  /* 定位电流连续稳定时间 */
@@ -40,6 +40,7 @@
 #define ID_L_SAMPLE_TICKS            8U               /* 8个间隔，共9点；20kHz时400us */
 #define ID_L_PULSE_COUNT             32U
 #define ID_L_AVERAGE_PULSES          4U
+#define ID_L_GROUP_CAPACITY          (ID_L_PULSE_COUNT / ID_L_AVERAGE_PULSES)
 #define ID_L_MIN_VALID_PER_SIGN      12U              /* 每极性至少3个平均组 */
 #define ID_L_Q_STEP_FRACTION          0.6f             /* 配合高平台Id偏置，提高q阶跃的有效响应 */
 
@@ -67,6 +68,13 @@
 #define ID_L_MAX_BUS_CHANGE          0.02f    /* 单条轨迹内母线相对变化上限 */
 #define ID_PHASE_SIGN_MIN_A          0.02f    /* 任一相接近零时拒绝该轨迹 */
 
+/* MODE6 的 R/L 合格后自动空载拖转：2s 升至此电频率、保持1s，再封波滑行。
+ * 此值是拖转命令，不充当实测转速；实际频率由封波后三相电压周期测得。
+ * 100Hz / 7极对约857机械rpm；试验前必须卸载，结果不会自动写入电机宏。
+ */
+#define ID_FLUX_TEST_HZ              100.0f
+#define ID_FLUX_TRACE_CAPACITY       16U /* 保留前16个有效周期，便于复核实际拟合输入 */
+
 /* 防止零除数、不完整平均组和不足的拟合点数；这些只在编译期检查。 */
 #if ID_ADJUST_TICKS == 0 || ID_L_SAMPLE_TICKS < 4 || ID_L_AVERAGE_PULSES == 0 || \
     ID_L_PULSE_COUNT % (2U * ID_L_AVERAGE_PULSES) != 0 || \
@@ -87,7 +95,9 @@ typedef enum {
     ID_STEP_DONE = 9U,           /* 已成功并封波 */
     ID_STEP_FAILED = 10U,        /* 已失败并封波 */
     ID_STEP_RS_MID_SETTLE = 11U, /* 保留原状态编号，新增中平台 */
-    ID_STEP_RS_MID_SAMPLE = 12U
+    ID_STEP_RS_MID_SAMPLE = 12U,
+    ID_STEP_FLUX_SPIN = 13U,     /* 限流 I/F 空载拖转，仅用于 MODE6 */
+    ID_STEP_FLUX_COAST = 14U     /* 三相桥封波，采集端电压；ADC 触发继续 */
 } ParamIdStep;
 
 typedef enum {
@@ -104,7 +114,9 @@ typedef enum {
     ID_ERROR_SAMPLE_TIMING,     /* 回调周期异常或计时器未工作 */
     ID_ERROR_TARGET_CURRENT,    /* 规定时间内无法建立定位/测试电流 */
     ID_ERROR_RS_FIT,            /* 平台波动或三点拟合残差过大 */
-    ID_ERROR_L_QUALITY          /* 电感离散度或正负脉冲差异过大 */
+    ID_ERROR_L_QUALITY,         /* 电感离散度或正负脉冲差异过大 */
+    ID_ERROR_BEMF_RESPONSE,     /* 没有足够完整、未削顶的反电动势周期 */
+    ID_ERROR_FLUX_FIT           /* 转速跨度不足、斜率/拟合不合格 */
 } ParamIdError;
 
 typedef struct {
@@ -146,6 +158,35 @@ typedef struct {
     float Rs_low;              /* 低→中平台的增量电阻，Ω，含逆变器/线阻影响 */
     float Rs_high;             /* 中→高平台的增量电阻，Ω，分别用于 Ld 两侧动态换算 */
     float l_bias_current_a;    /* 最近辨识轴的实际偏置平台 Id，A；Lq 在高平台辨识 */
+    /* 每轴最多8个有效平均组，按完成顺序保存；有效数量看 *_fit_groups。
+     * 每组由4次同极性脉冲平均后拟合，Ld/Lq 是这些有效组的平均值。
+     */
+    float ld_measurements[ID_L_GROUP_CAPACITY]; /* H */
+    float lq_measurements[ID_L_GROUP_CAPACITY]; /* H */
+    uint8_t rl_valid;           /* 静止 R/L 已通过，即便后续转动试验失败仍保留 */
+    uint8_t flux_valid;         /* 磁链与 Ke 拟合通过 */
+    float Flux;                /* 永磁磁链候选，Wb；质量失败也保留，必须结合flux_valid */
+    float Ke;                  /* 线间峰值常数候选，Vpk_LL/krpm；非零不代表通过检查 */
+    float bemf_voltage_v;       /* 周期平均线间包络*pi/3，等效正弦线间峰值，V */
+    float bemf_frequency_hz;    /* 最近完整周期的实测电频率，Hz */
+    float bemf_speed_rpm;       /* 实测频率按极对数换算，机械 rpm，无方向 */
+    float bemf_offset_v;        /* 线间幅值-电角速度拟合截距，V */
+    float flux_fit_error;       /* 拟合 RMS 残差/参与拟合的电压跨度 */
+    uint16_t flux_samples;      /* 参与拟合的完整电周期数 */
+    /* 封波采样诊断，停机后保留；范围为退磁等待结束后的整个采样窗口。 */
+    uint16_t bemf_crossings;    /* 迟滞上穿次数，包含建立起点的第一次 */
+    uint16_t bemf_rejected_cycles;
+    uint8_t bemf_reject_flags;  /* 累计原因：bit0 ADC上限，bit1近母线，bit2弱信号，bit3周期过短，bit4强信号窗口结束 */
+    uint16_t bemf_raw_min[3];   /* VA/VB/VC 原始ADC最小值 */
+    uint16_t bemf_raw_max[3];   /* VA/VB/VC 原始ADC最大值 */
+    float bemf_peak_v;          /* 整个采样窗口线间峰值，包含被拒绝的周期，V */
+    uint8_t flux_fit_flags;     /* bit0频率跨度，bit1电压跨度，bit2退化，bit3斜率，bit4残差，bit5斜率标准误差 */
+    float bemf_frequency_min_hz, bemf_frequency_max_hz;
+    float bemf_voltage_span_v;
+    float flux_slope_relative_error; /* 斜率标准误差/正斜率；仅在可计算时更新 */
+    float bemf_trace_hz[ID_FLUX_TRACE_CAPACITY];
+    float bemf_trace_v[ID_FLUX_TRACE_CAPACITY];      /* 拟合输入：等效正弦线间峰值 */
+    float bemf_trace_peak_v[ID_FLUX_TRACE_CAPACITY]; /* 同周期原始最大值，诊断用，不参与拟合 */
 } ParamId_t;
 
 extern ParamId_t pid;

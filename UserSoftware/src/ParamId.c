@@ -1,18 +1,20 @@
 /**
  * @file    ParamId.c
- * @brief   静止电机的 Rs / Ld / Lq 候选参数辨识。
+ * @brief   Rs/Ld/Lq 静止辨识调度，以及空载磁链试验的衔接。
  *
- * 运行顺序：受限升压定位 → 三个稳态电流平台测 Rs → d 轴脉冲 → q 轴脉冲。
+ * 运行顺序：定位 → 三平台 Rs → d/q 脉冲 → 空载拖转 → 封波测反电动势。
  * 本文件按“公共输出/保护、Rs、Ld/Lq、状态调度”排列；配置统一在 ParamId.h。
  *
  * 调用条件：ADC1 整组转换完成后，每个电流环周期调用一次 ParamIdRun()。
- * MODE=5 直接控制测试电压，不经过速度 PI 或电流 PI。
+ * 静止部分直接控制测试电压；拖转由 paramIdFlux.c 的独立电流 PI 执行。
+ * MODE=6 不经过正常运行的速度 PI，也不改 MODE=2 的直接闭环路径。
  * 电压命令为 pu，电压重构/拟合用 V，电流用 A，电阻用 Ω，电感用 H。
  *
  * 固定电角度与定位电流不能证明转子一定对齐；转子转动、ADC 饱和、采样错时
  * 或逆变器损耗变化都会影响结果。pid.valid 表示通过软件检查，结果仍需实测复核。
  */
 #include "ParamId.h"
+#include "paramIdFlux.h"
 
 /* 以下编号仅用于本模块的数组索引，不是对外的 ParamIdStep 状态编号。 */
 typedef enum {
@@ -544,6 +546,10 @@ static void ParamId_AccumulatePulse(ParamIdAxis axis)
                                pid.l_positive_current : pid.l_negative_current;
         /* 每个有效平均组只保存一次，便于直接从 pid 对比两侧曲线。 */
         memcpy(saved_current, pulse->current, sizeof(pulse->current));
+        unsigned group = pulse->stats[ID_POSITIVE].group_count +
+                         pulse->stats[ID_NEGATIVE].group_count;
+        float *measurements = axis == ID_AXIS_D ? pid.ld_measurements : pid.lq_measurements;
+        measurements[group] = inductance_h;
         stats->group_count++;
         stats->inductance_sum += inductance_h;
         stats->inductance_square_sum += inductance_h * inductance_h;
@@ -670,7 +676,8 @@ static void ParamId_ValidateResults(void)
     if (ratio < 1.0f / ID_L_RATIO_MAX || ratio > ID_L_RATIO_MAX) {
         ParamId_End(ID_ERROR_L_RANGE);
     } else {
-        ParamId_End(ID_ERROR_NONE);
+        pid.rl_valid = 1U;
+        ParamIdFluxStart(id_rt.rs.command[ID_RS_MID]);
     }
 }
 
@@ -690,7 +697,8 @@ void ParamIdStart(void)
 }
 
 /**
- * 一次调用处理一拍：固定坐标系 → 保存反馈 → 检查 → 推进当前步骤。
+ * 一次调用处理一拍：静止阶段固定坐标系取反馈 → 检查 → 推进当前步骤。
+ * 旋转/滑行阶段由磁链模块管理角度和端电压，不在这里强制重置角度。
  * 三平台均值、电感拟合、停止与错误处理均在各自函数内完成。
  * pid.tick 在主步骤切换时清零；电感阶段在 REST/WAIT/SAMPLE 切换时清零。
  */
@@ -703,11 +711,13 @@ void ParamIdRun(uint32_t sample_cycle)
     if (pid.done) {
         return;
     }
-    motor.IQAngle = 0;
-    UVW_Axis_DQ();
-    PWM_ReconstructVoltage(&alpha_v, &beta_v);
-    pid.current_a = PARK_PCurr.Ds;
-    pid.voltage_v = alpha_v;
+    if (pid.step != ID_STEP_FLUX_SPIN && pid.step != ID_STEP_FLUX_COAST) {
+        motor.IQAngle = 0;
+        UVW_Axis_DQ();
+        PWM_ReconstructVoltage(&alpha_v, &beta_v);
+        pid.current_a = PARK_PCurr.Ds;
+        pid.voltage_v = alpha_v;
+    }
 
     error = ParamId_CheckSamplePeriod(sample_cycle);
     if (error == ID_ERROR_NONE) {
@@ -749,6 +759,12 @@ void ParamIdRun(uint32_t sample_cycle)
             break;
         case ID_STEP_VALIDATE:
             ParamId_ValidateResults();
+            break;
+        case ID_STEP_FLUX_SPIN:
+        case ID_STEP_FLUX_COAST:
+            if (ParamIdFluxRun()) {
+                ParamId_End((ParamIdError)pid.error);
+            }
             break;
         default:
             ParamId_End(ID_ERROR_INVALID_STATE);
